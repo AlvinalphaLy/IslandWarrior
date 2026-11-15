@@ -1044,13 +1044,6 @@ export class MapScene extends Phaser.Scene {
     this.ship?.update(time);
     this.archery?.update(time, delta);
     this.harbor?.update(time, delta);
-    if (this.ship) {
-      // the sail is tall: when the ship sits in front of a statue (or its chest), fade it so you can see what happens
-      const ship = this.ship;
-      const sb = ship.sprite.getBounds();
-      const hides = this.statues.some((st) => st.y < ship.pos.y && Phaser.Geom.Intersects.RectangleToRectangle(sb, (st.chest ?? st.sprite).getBounds()));
-      ship.sprite.alpha += ((hides ? 0.3 : 1) - ship.sprite.alpha) * 0.15;
-    }
     for (const n of this.npcs) n.update(time, delta);
     for (const e of this.enemies) e.update(time, this.player);
     if (!this.sailing) this.checkPortals();
