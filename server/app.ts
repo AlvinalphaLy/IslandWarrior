@@ -142,10 +142,17 @@ export function makeServer(
       if (url.pathname === '/integrations' && options.harness)
         return await serve(resolve('integrations/harness.html'), req, res);
       if (!options.staticDir) throw new HttpError(404, 'Not found');
+      // the game page is game/index.html: /game needs its trailing slash so its relative URLs resolve
+      if (url.pathname === '/game') {
+        res.writeHead(301, { location: '/game/' + url.search });
+        res.end();
+        return;
+      }
       const root = resolve(options.staticDir);
+      // a folder URL serves that folder's index.html (/ = the homepage, /game/ = the game)
       const file = resolve(
         root,
-        '.' + decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname),
+        '.' + decodeURIComponent(url.pathname.endsWith('/') ? `${url.pathname}index.html` : url.pathname),
       );
       if (
         !file.startsWith(root + sep) ||

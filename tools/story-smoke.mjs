@@ -21,7 +21,7 @@ try {
     window.__storyBeats = [];
     window.addEventListener('odyssey:story', (event) => window.__storyBeats.push(event.detail.key));
   });
-  await page.goto(`http://127.0.0.1:${server.address().port}/?canvas`);
+  await page.goto(`http://127.0.0.1:${server.address().port}/game/?canvas`);
 
   /** Exercise the visible popup, including real audio and scene pausing, before returning to gameplay. */
   async function finishStory(expectAudio = false) {

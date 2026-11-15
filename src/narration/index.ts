@@ -1,7 +1,8 @@
 import { NARRATION, type NarrationCard } from '../data/narration';
 import './narration.css';
-const audioBase = `${import.meta.env.BASE_URL}assets/voice/`;
-const portraitBase = `${import.meta.env.BASE_URL}assets/portraits/`;
+import { SITE_ROOT } from '../siteRoot';
+const audioBase = `${SITE_ROOT}assets/voice/`;
+const portraitBase = `${SITE_ROOT}assets/portraits/`;
 const speakerIcon =
   '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4zM17 8q5 4 0 8M20 5q8 7 0 14"/></svg>';
 const replayIcon =

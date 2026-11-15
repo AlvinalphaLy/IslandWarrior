@@ -2,7 +2,9 @@ FROM node:24-bookworm-slim AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
-COPY tsconfig.json vite.config.ts index.html ./
+COPY tsconfig.json vite.config.ts index.html narration-preview.html ./
+COPY home ./home
+COPY game ./game
 COPY src ./src
 COPY public ./public
 RUN npm run build

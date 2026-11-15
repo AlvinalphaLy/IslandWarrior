@@ -3,7 +3,7 @@
 import puppeteer from 'puppeteer-core';
 const CHROME = process.env.CHROME || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 // ?canvas: headless Chrome's software WebGL is flaky, the Canvas renderer is deterministic
-const URL = process.env.URL || 'http://localhost:5173/?canvas&story=off';
+const URL = process.env.URL || 'http://localhost:5173/game/?canvas&story=off';
 const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new' });
 const page = await browser.newPage();
 await page.setViewport({ width: 1440, height: 810 });
@@ -556,13 +556,17 @@ await page.keyboard.down('KeyD');
 await new Promise((r) => setTimeout(r, 900));
 await page.keyboard.up('KeyD');
 await new Promise((r) => setTimeout(r, 1200));
+// the red house (challenge 1) uses the real-time fight (FightScene), not the turn-based battle
 const inBattle = await active();
-console.log('battle started:', inBattle, inBattle.includes('battle') ? 'OK' : 'FAIL');
+console.log('fight started:', inBattle, inBattle.includes('fight') ? 'OK' : 'FAIL');
 await page.screenshot({ path: 'cache/shot_battle.png' });
-for (let i = 0; i < 12 && (await active()).includes('battle'); i++) {
-  await page.keyboard.press('Digit1');
-  await new Promise((r) => setTimeout(r, 2000));
+// close in on the raider (D held) and punch (J) until the fight ends
+await page.keyboard.down('KeyD');
+for (let i = 0; i < 120 && (await active()).includes('fight'); i++) {
+  await page.keyboard.press('KeyJ');
+  await new Promise((r) => setTimeout(r, 250));
 }
+await page.keyboard.up('KeyD');
 await new Promise((r) => setTimeout(r, 800));
 const after = await page.evaluate(() => {
   const s = window.game.scene.getScene('dungeon');

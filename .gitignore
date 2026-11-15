@@ -23,3 +23,6 @@ Thumbs.db
 public/assets/voice/*.partial
 # generated team docs (PDFs)
 docs/
+
+# reference copy the homepage and real-time fight were ported from (has its own credentials and logs)
+/odyssey-integrated/

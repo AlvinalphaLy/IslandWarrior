@@ -6,7 +6,7 @@ A top-down village map rebuilt tile-for-tile from `reference/village.png`, using
 
 ```
 npm install
-npm run dev        # http://localhost:5173
+npm run dev        # http://localhost:5173 (homepage) → the game is at http://localhost:5173/game/
 ```
 
 | Key | Action |
@@ -19,6 +19,7 @@ npm run dev        # http://localhost:5173
 | Walk up into a ladder | Climbs back out through the door you came in by |
 | Win a statue challenge | Crushing Polyphemus (Cyclops den) or beating the Siren (Circe's grotto) hands you that dungeon's hoard and returns you to the ship's helm automatically, however you arrived. The bosses and chests are listed in `CHALLENGES` in `src/scenes/MapScene.ts`. |
 | Touch a monster (dungeon) | Starts a battle. **1–4** or the arrow keys + Enter choose Attack / Defend / Potion / Run. |
+| Touch a monster in the red house (challenge 1) | Starts a **real-time fight** instead (`src/scenes/FightScene.ts`): **A/D** move, **W** jump, **S** block, **J** punch, **K** kick, and **K** with a full meter is a launcher. Landed hits build combos and the meter; ambrosia heals you automatically once, at low HP. There's no running away. Which maps use it is `FIGHT_MAPS` in `src/scenes/MapScene.ts`. |
 | C | Change the player's skin: Adam → Zeus → Hermes → Hades → Heracles → Aphrodite |
 | M | Toggle whole-map overview |
 | F1 | Debug overlay: collision rectangles, door triggers, NPC wander areas, physics bodies |
@@ -28,6 +29,9 @@ On touch devices, an on-screen D-pad and an action button appear.
 ### Asset packs
 
 The game runs from what's in `public/assets/`, which is committed. The original third-party packs are not in the repo: `Serene_Village_revamped_v1.9/`, `Fungus Cave [16x16]/`, `Fantasy Battlers - Free/` and `vendor/modern_interiors_free/`. You only need them to re-run the asset/map scripts in `tools/` (`npm run map`, `map:cave`, `characters`). To do that, download the packs and put them back at those paths in the project root.
+
+
+**Homepage.** `index.html` (with `home/script.js` and `home/style.css`) is the Trojan Horse welcome page: strike the horse three times and it breaks open and walks you into the game at `game/index.html`. The game's top bar has a **⌂ Home** link back. Public assets stay at the site root, so the game page finds them through `<meta name="site-root" content="../">` (`src/siteRoot.ts`), which Phaser's loader and the narration voices use. The real-time fight and the homepage were ported from the `odyssey-integrated` copy, without its Kinect gesture controls.
 
 ## How the map was built
 

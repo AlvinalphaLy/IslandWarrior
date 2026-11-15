@@ -192,3 +192,85 @@ export const battleUi = {
       .forEach((b) => b.classList.toggle('sel', b.dataset.c === c));
   },
 };
+
+// ---------------------------------------------------------------- real-time fight HUD (FightScene, #fight)
+/** One fighter's health bar: exact HP numbers plus the smoothly draining fill and its lighter damage trail (0..1). */
+export interface FighterBar {
+  name: string;
+  hp: number;
+  max: number;
+  fill: number;
+  trail: number;
+}
+
+const fq = <T extends Element = HTMLElement>(sel: string) => document.querySelector<T>(`#fight ${sel}`)!;
+// bars() runs every frame: only touch the DOM when a value actually changes
+const fightWritten = new Map<string, string>();
+function fightPut(sel: string, kind: 'text' | 'width', value: string) {
+  const key = `${sel}|${kind}`;
+  if (fightWritten.get(key) === value) return;
+  fightWritten.set(key, value);
+  if (kind === 'text') fq(sel).textContent = value;
+  else fq(sel).style.width = value;
+}
+/** (Re)start a one-shot CSS animation class. */
+function restartAnim(el: HTMLElement, cls: string) {
+  el.classList.remove(cls);
+  void el.offsetWidth; // reflow, so the animation runs again
+  el.classList.add(cls);
+}
+let lastCombo = 0;
+const pct = (f: number) => `${(100 * Math.max(0, Math.min(1, f))).toFixed(1)}%`;
+
+export const fightUi = {
+  show(foeName: string) {
+    fightWritten.clear();
+    fightPut('.foe .n', 'text', foeName);
+    lastCombo = 0;
+    fightUi.meter(0);
+    fightUi.combo(0);
+    fightUi.log('');
+    document.getElementById('fight')!.style.display = 'block';
+    // the map's controls hint and stats box stay out of the fight (the fight HUD has its own bars and controls)
+    document.getElementById('hint')!.style.visibility = 'hidden';
+    document.getElementById('hud')!.style.visibility = 'hidden';
+  },
+  hide() {
+    document.getElementById('fight')!.style.display = 'none';
+    document.getElementById('hint')!.style.visibility = '';
+    document.getElementById('hud')!.style.visibility = '';
+  },
+  /** both health bars: exact numbers, smoothed widths (the scene lerps fill/trail each frame) */
+  bars(me: FighterBar, foe: FighterBar) {
+    for (const [side, b] of [['.me', me], ['.foe', foe]] as const) {
+      fightPut(`${side} .n`, 'text', b.name);
+      fightPut(`${side} .v`, 'text', `${b.hp}/${b.max}`);
+      fightPut(`${side} .bar i`, 'width', pct(b.fill));
+      fightPut(`${side} .bar b`, 'width', pct(b.trail));
+    }
+  },
+  /** launcher meter, 0..100; glows when full and its label says the next kick is the launcher */
+  meter(v: number) {
+    fightPut('.mbar i', 'width', pct(v / 100));
+    fightPut('.meter .lbl', 'text', v >= 100 ? 'READY — K = LAUNCHER' : 'Meter');
+    fq('.meter').classList.toggle('full', v >= 100);
+  },
+  /** the moment the meter fills: a short bright attention flash on top of the steady full glow */
+  meterReady() {
+    restartAnim(fq('.meter'), 'ready');
+  },
+  /** combo counter; pops (scale pulse) each time the count rises */
+  combo(n: number) {
+    fightPut('.combo', 'text', n >= 2 ? `${n} HITS` : '');
+    if (n >= 2 && n > lastCombo) restartAnim(fq('.combo'), 'pop');
+    lastCombo = n;
+  },
+  /** remaining automatic heals (ambrosia fires by itself at low HP, once per fight) */
+  ambrosia(count: number, available: boolean) {
+    fightPut('.amb .a', 'text', String(count));
+    fq('.amb').classList.toggle('out', !available);
+  },
+  log(text: string) {
+    fq('.log').textContent = text;
+  },
+};

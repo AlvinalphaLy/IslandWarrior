@@ -16,7 +16,7 @@ try {
   const page = await browser.newPage();
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto(`http://127.0.0.1:${server.address().port}/?canvas`);
+  await page.goto(`http://127.0.0.1:${server.address().port}/game/?canvas`);
   await page.waitForFunction(() => window.game?.scene.getScene('village')?.ship);
 
   /** Drive the visible narration controls, never replacing quest progress or reward registry data. */

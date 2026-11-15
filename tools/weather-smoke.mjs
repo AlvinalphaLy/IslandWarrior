@@ -16,7 +16,7 @@ try {
   const page = await browser.newPage();
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  const url = `http://127.0.0.1:${server.address().port}/?canvas`;
+  const url = `http://127.0.0.1:${server.address().port}/game/?canvas`;
   /** Wait for scene creation rather than treating a visible canvas as a ready game. */
   async function ready(map = 'village') {
     await page.waitForFunction(

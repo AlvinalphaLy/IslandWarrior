@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Island Warrior</title>
+    <!-- public/ assets are served from the site root, one folder up (src/siteRoot.ts) -->
+    <meta name="site-root" content="../" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 fill=%22%234f9be0%22/%3E%3Crect x=%223%22 y=%225%22 width=%2210%22 height=%228%22 fill=%22%2378c850%22/%3E%3C/svg%3E"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #1b1f2a;
+        overflow: hidden;
+      }
+      body {
+        font-family: 'Pixelify Sans', ui-monospace, monospace;
+        color: #fdf6e3;
+      }
+      #game {
+        position: fixed;
+        inset: 0;
+      }
+      canvas {
+        image-rendering: pixelated;
+      }
+      #ui {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+      }
+      #dialog {
+        position: absolute;
+        left: 50%;
+        bottom: 4vh;
+        transform: translateX(-50%);
+        width: min(720px, calc(100vw - 32px));
+        box-sizing: border-box;
+        background: #3b2a24ee;
+        border: 4px solid #e9c46a;
+        border-radius: 6px;
+        box-shadow:
+          0 0 0 4px #2a1d18,
+          0 8px 24px #0008;
+        padding: 14px 18px 12px;
+        font-size: clamp(16px, 2.4vw, 22px);
+        line-height: 1.35;
+        display: none;
+      }
+      #dialog .name {
+        color: #e9c46a;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+      #dialog .more {
+        position: absolute;
+        right: 12px;
+        bottom: 6px;
+        font-size: 14px;
+        opacity: 0.8;
+        animation: blink 1s steps(2) infinite;
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+      #hint {
+        position: absolute;
+        left: 12px;
+        top: 10px;
+        font-size: 14px;
+        background: #0007;
+        padding: 6px 10px;
+        border-radius: 4px;
+        line-height: 1.5;
+      }
+      #toast {
+        position: absolute;
+        left: 50%;
+        top: 14px;
+        transform: translateX(-50%);
+        background: #2a9d8fee;
+        padding: 8px 14px;
+        border-radius: 4px;
+        font-size: 16px;
+        display: none;
+      }
+      #dpad {
+        position: absolute;
+        left: 16px;
+        bottom: 16px;
+        width: 150px;
+        height: 150px;
+        display: none;
+        pointer-events: auto;
+      }
+      #dpad button,
+      #act {
+        position: absolute;
+        width: 50px;
+        height: 50px;
+        border: 0;
+        border-radius: 10px;
+        background: #fff3;
+        color: #fff;
+        font-size: 22px;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      #dpad [data-d='up'] {
+        left: 50px;
+        top: 0;
+      }
+      #dpad [data-d='down'] {
+        left: 50px;
+        top: 100px;
+      }
+      #dpad [data-d='left'] {
+        left: 0;
+        top: 50px;
+      }
+      #dpad [data-d='right'] {
+        left: 100px;
+        top: 50px;
+      }
+      #act {
+        right: 24px;
+        bottom: 50px;
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        display: none;
+        pointer-events: auto;
+        font-family: inherit;
+      }
+      #bow {
+        position: absolute;
+        right: 100px;
+        bottom: 24px;
+        width: 52px;
+        height: 52px;
+        border: 0;
+        border-radius: 50%;
+        background: #fff3;
+        color: #fff;
+        font: 600 15px inherit;
+        font-family: inherit;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        display: none;
+        pointer-events: auto;
+      }
+      /* night storm toggle (Weather.ts): always visible, under the HUD */
+      #weather {
+        position: absolute;
+        right: 12px;
+        top: 46px;
+        pointer-events: auto;
+        cursor: pointer;
+        font: inherit;
+        font-size: 14px;
+        color: #fdf6e3;
+        background: #0009;
+        border: 1px solid #ffffff33;
+        border-radius: 4px;
+        padding: 5px 10px;
+      }
+      /* trials tracker (ui.ts updateTrials): how many of the three trials the game has recorded */
+      #trials {
+        position: absolute;
+        right: 110px;
+        top: 46px;
+        font-size: 14px;
+        background: #0009;
+        border: 1px solid #ffffff33;
+        border-radius: 4px;
+        padding: 5px 10px;
+        display: none;
+      }
+      #trials.ready {
+        border-color: #e9c46a;
+        color: #ffe08a;
+        animation: trialsGlow 1.4s ease-in-out infinite;
+      }
+      @keyframes trialsGlow {
+        50% {
+          box-shadow: 0 0 10px #e9c46a99;
+        }
+      }
+      #weather:hover {
+        background: #000c;
+        border-color: #e9c46a;
+      }
+      @media (pointer: coarse) {
+        #dpad,
+        #act,
+        #bow {
+          display: block;
+        }
+        #hint {
+          display: none;
+        }
+      }
+
+      /* a challenge won: shown for a few seconds before the trip back to the island (ui.ts showVictory) */
+      #victory {
+        position: absolute;
+        left: 50%;
+        top: 42%;
+        transform: translate(-50%, -50%) scale(0.9);
+        display: none;
+        opacity: 0;
+        width: min(560px, calc(100vw - 32px));
+        box-sizing: border-box;
+        text-align: center;
+        padding: 18px 22px 16px;
+        background: radial-gradient(ellipse at 50% 0%, #6b4a1ef2, #2a1d18f2 70%);
+        border: 4px solid #e9c46a;
+        border-radius: 8px;
+        box-shadow:
+          0 0 0 4px #2a1d18,
+          0 0 40px #e9c46a66,
+          0 10px 30px #000a;
+        transition:
+          opacity 0.35s,
+          transform 0.35s;
+      }
+      #victory.show {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+      #victory .title {
+        font-size: clamp(30px, 6vw, 52px);
+        font-weight: 600;
+        letter-spacing: 6px;
+        color: #ffe08a;
+        text-shadow:
+          0 3px 0 #7a4a12,
+          0 0 18px #ffcf5a88;
+      }
+      #victory .sub {
+        font-size: clamp(16px, 2.6vw, 22px);
+        color: #fdf6e3;
+        margin: 4px 0 10px;
+      }
+      #victory ul {
+        list-style: none;
+        margin: 0 0 12px;
+        padding: 0;
+        font-size: clamp(14px, 2.2vw, 18px);
+        color: #a8e6a1;
+        line-height: 1.5;
+      }
+      #victory .back {
+        font-size: 14px;
+        opacity: 0.85;
+      }
+      #victory .bar {
+        height: 6px;
+        margin-top: 6px;
+        background: #0006;
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      #victory .bar i {
+        display: block;
+        height: 100%;
+        width: 0;
+        background: #e9c46a;
+      }
+
+      #hud {
+        position: absolute;
+        right: 12px;
+        top: 10px;
+        background: #0009;
+        padding: 6px 10px;
+        border-radius: 4px;
+        font-size: 15px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      #hud .hpbar {
+        width: 80px;
+        height: 8px;
+        background: #3a1f1f;
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      #hud .hpbar i {
+        display: block;
+        height: 100%;
+        background: #e05d5d;
+      }
+
+      #battle {
+        position: absolute;
+        left: 50%;
+        bottom: 3vh;
+        transform: translateX(-50%);
+        display: none;
+        pointer-events: auto;
+        width: min(760px, calc(100vw - 32px));
+        box-sizing: border-box;
+        background: #1a0f0bee;
+        border: 4px solid #e9c46a;
+        border-radius: 6px;
+        box-shadow:
+          0 0 0 4px #0d0705,
+          0 8px 24px #0008;
+        padding: 12px 16px;
+        font-size: clamp(14px, 2vw, 19px);
+      }
+      #battle .bars {
+        display: flex;
+        gap: 24px;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+      #battle .who {
+        flex: 1;
+      }
+      #battle .who .n {
+        color: #e9c46a;
+        font-weight: 600;
+      }
+      #battle .bar {
+        height: 10px;
+        background: #3a2a2a;
+        border-radius: 2px;
+        overflow: hidden;
+        margin-top: 3px;
+      }
+      #battle .bar i {
+        display: block;
+        height: 100%;
+        background: #7cfc9a;
+        transition: width 0.3s;
+      }
+      #battle .foe .bar i {
+        background: #e05d5d;
+      }
+      #battle .log {
+        min-height: 2.6em;
+        line-height: 1.3;
+        margin-bottom: 8px;
+      }
+      #battle .cmds {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+      }
+      #battle button {
+        font: inherit;
+        color: #fdf6e3;
+        background: #6e2f18;
+        border: 2px solid #a8542a;
+        border-radius: 4px;
+        padding: 6px 4px;
+        cursor: pointer;
+      }
+      #battle button.sel {
+        border-color: #e9c46a;
+        background: #9a4522;
+      }
+      #battle button:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+      #battle kbd {
+        opacity: 0.6;
+        font-size: 0.8em;
+        margin-right: 4px;
+      }
+
+      /* real-time fight HUD (FightScene, ui.ts fightUi): health bars, launcher meter, combo, auto-heal, log, keys */
+      #fight {
+        position: absolute; left: 50%; bottom: 2vh; transform: translateX(-50%); display: none; pointer-events: none;
+        width: min(780px, calc(100vw - 32px)); box-sizing: border-box; background: #1a0f0b; border: 3px solid #e9c46a;
+        border-radius: 6px; box-shadow: 0 0 0 3px #0d0705, 0 6px 18px #0008; padding: 6px 12px 6px;
+        font-size: clamp(15px, 1.8vw, 18px); color: #fdf6e3; line-height: 1.25;
+      }
+      #fight .bars { display: flex; gap: 12px; align-items: flex-end; }
+      #fight .who { flex: 1; min-width: 0; }
+      #fight .who .top { display: flex; justify-content: space-between; gap: 8px; white-space: nowrap; }
+      #fight .foe .top { flex-direction: row-reverse; }
+      #fight .who .n { color: #e9c46a; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+      #fight .vs { color: #e9c46a; font-weight: 600; }
+      #fight .bar {
+        position: relative; height: 10px; background: #3a2a2a; border: 1px solid #0d0705; border-radius: 2px;
+        overflow: hidden; margin-top: 2px;
+      }
+      #fight .bar b, #fight .bar i { position: absolute; top: 0; bottom: 0; left: 0; width: 100%; }
+      #fight .bar b { background: #fff1c1; }
+      #fight .bar i { background: #7cfc9a; }
+      #fight .foe .bar b, #fight .foe .bar i { left: auto; right: 0; }
+      #fight .foe .bar i { background: #e05d5d; }
+      #fight .row { display: flex; gap: 14px; align-items: center; margin-top: 4px; white-space: nowrap; }
+      #fight .meter { flex: 1; display: flex; gap: 6px; align-items: center; }
+      #fight .mbar { flex: 1; height: 7px; background: #2a2236; border: 1px solid #0d0705; border-radius: 2px; overflow: hidden; }
+      #fight .mbar i { display: block; height: 100%; width: 0; background: #5aa9e6; }
+      #fight .meter.full .mbar i { background: #ffd166; animation: mpulse 0.45s ease-in-out infinite alternate; }
+      #fight .meter.full .lbl { color: #ffd166; font-weight: 600; }
+      #fight .meter.ready .mbar { animation: mready 0.22s 3; }
+      #fight .meter.ready .lbl { display: inline-block; animation: lready 0.22s 3; }
+      @keyframes mpulse { to { filter: brightness(1.6); } }
+      @keyframes mready { 50% { box-shadow: 0 0 0 3px #fff1c1, 0 0 12px #ffd166; } }
+      @keyframes lready { 50% { color: #fff; transform: scale(1.25); } }
+      #fight .combo { min-width: 5.5em; text-align: center; color: #ffd166; font-weight: 600; }
+      #fight .combo.pop { animation: cpop 0.2s ease-out; }
+      @keyframes cpop { from { transform: scale(1.5); color: #fff; } to { transform: scale(1); } }
+      #fight .amb { color: #b8f28a; }
+      #fight .amb.out { color: #8f8478; text-decoration: line-through; }
+      #fight .log { min-height: 1.25em; margin-top: 3px; }
+      #fight .keys {
+        margin-top: 4px; padding-top: 4px; border-top: 1px solid #4a3426; color: #fdf6e3;
+        display: flex; flex-wrap: wrap; column-gap: 12px; row-gap: 2px;
+      }
+      #fight .keys span { white-space: nowrap; }
+      #fight .keys kbd {
+        display: inline-block; min-width: 1em; text-align: center; padding: 0 5px; margin-right: 4px;
+        font: inherit; font-weight: 600; color: #ffe08a; background: #3b2a24; border: 1px solid #e9c46a;
+        border-radius: 3px; line-height: 1.2;
+      }
+
+      /* back to the Trojan Horse homepage (the site root) */
+      #home {
+        display: inline-block; margin-top: 4px; pointer-events: auto; cursor: pointer; text-decoration: none;
+        font: 600 13px 'Pixelify Sans', ui-monospace, monospace; color: #e9c46a; background: #3b2a24ee;
+        border: 2px solid #e9c46a; border-radius: 3px; box-shadow: 0 0 0 2px #2a1d18; padding: 1px 8px;
+      }
+      #home:hover, #home:focus-visible { background: #6b4a1e; color: #ffe08a; outline: none; }
+    </style>
+  </head>
+  <body>
+    <div id="game"></div>
+    <div id="ui">
+      <div id="hint">
+        WASD / Arrows: move &nbsp;·&nbsp; E / Space: talk<br />F: shoot (once you have the bow)
+        &nbsp;·&nbsp; N: night storm &nbsp;·&nbsp; C: change skin &nbsp;·&nbsp; M: map overview
+        &nbsp;·&nbsp; F1: collision debug
+        <br /><a id="home" href="../" tabindex="-1" title="Back to the Odyssey welcome page">⌂ Home</a>
+      </div>
+      <div id="toast"></div>
+      <div id="dialog">
+        <div class="name"></div>
+        <div class="text"></div>
+        <div class="more">▼</div>
+      </div>
+      <div id="dpad">
+        <button data-d="up">▲</button><button data-d="left">◀</button>
+        <button data-d="right">▶</button><button data-d="down">▼</button>
+      </div>
+      <button id="act">E</button>
+      <button id="bow">Bow</button>
+      <button id="weather" title="Night storm (N)">🌙 Night</button>
+      <div id="trials"></div>
+      <div id="hud"></div>
+      <div id="victory">
+        <div class="title">VICTORY</div>
+        <div class="sub"></div>
+        <ul></ul>
+        <div class="back">Returning to the island...</div>
+        <div class="bar"><i></i></div>
+      </div>
+      <div id="battle">
+        <div class="bars">
+          <div class="who me">
+            <span class="n">You</span> <span class="v"></span>
+            <div class="bar"><i></i></div>
+          </div>
+          <div class="who foe">
+            <span class="n"></span> <span class="v"></span>
+            <div class="bar"><i></i></div>
+          </div>
+        </div>
+        <div class="log"></div>
+        <div class="cmds">
+          <button data-c="attack"><kbd>1</kbd>Attack</button>
+          <button data-c="defend"><kbd>2</kbd>Defend</button>
+          <button data-c="potion"><kbd>3</kbd>Ambrosia</button>
+          <button data-c="run"><kbd>4</kbd>Run</button>
+        </div>
+      </div>
+      <div id="fight">
+        <div class="bars">
+          <div class="who me"><div class="top"><span class="n">Odysseus</span><span class="v"></span></div><div class="bar"><b></b><i></i></div></div>
+          <div class="vs">VS</div>
+          <div class="who foe"><div class="top"><span class="n"></span><span class="v"></span></div><div class="bar"><b></b><i></i></div></div>
+        </div>
+        <div class="row">
+          <div class="meter"><span class="lbl">Meter</span><div class="mbar"><i></i></div></div>
+          <div class="combo"></div>
+          <div class="amb" title="Heals automatically when your HP runs low (once per fight)">Auto-heal ×<span class="a">0</span></div>
+        </div>
+        <div class="log"></div>
+        <div class="keys">
+          <span><kbd>A/D</kbd>move</span><span><kbd>W</kbd>jump</span><span><kbd>S</kbd>block</span>
+          <span><kbd>J</kbd>punch</span><span><kbd>K</kbd>kick</span><span><kbd>K</kbd>(full meter) launcher</span>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

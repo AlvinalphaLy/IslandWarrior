@@ -33,7 +33,7 @@ try {
   assert.equal(recap.counts.harness, 1);
   assert.equal(recap.counts.chert, 0);
   assert.equal(recap.damageEvents.length, 1);
-  await page.goto(base + '/?canvas');
+  await page.goto(base + '/game/?canvas');
   await page.waitForSelector('canvas');
   assert.deepEqual(errors, []);
   console.log('Browser smoke passed: harness start/event/finish/recap and existing game canvas.');

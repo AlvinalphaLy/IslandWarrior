@@ -1,9 +1,9 @@
 // Screenshots of the battle animations, one enemy at a time (needs a dev server).
-// node tools/battle_shots.mjs [outDir]   env URL defaults to http://localhost:5173/?canvas
+// node tools/battle_shots.mjs [outDir]   env URL defaults to http://localhost:5173/game/?canvas
 import puppeteer from 'puppeteer-core';
 
 const CHROME = process.env.CHROME || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
-const URL = process.env.URL || 'http://localhost:5173/?canvas';
+const URL = process.env.URL || 'http://localhost:5173/game/?canvas';
 const OUT = process.argv[2] || 'cache';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 

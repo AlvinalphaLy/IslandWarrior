@@ -138,6 +138,12 @@ export interface MapSceneData {
  * Ground0..2 tile layers, Objects (tile objects with sortY/z), Collision rects, Spawns (player/npc/sign/chest/door/exit).
  */
 /**
+ * Maps whose battles are the real-time fight (FightScene: move, jump, block, punch, kick) instead of the turn-based
+ * BattleScene. Challenge 1, the red house's Telemachus training room, is the `dungeon` map.
+ */
+const FIGHT_MAPS = ['dungeon'];
+
+/**
  * Statue dungeons whose challenge ends with a trip back to the ship: once `boss` (a Spawns name) is defeated (crushed
  * by the boulder or beaten in battle), its hoard `chest` is collected for you and you're returned to the helm of the
  * ship on the map you came from. `delay` lets the win play out first (the Cyclops' boulder cutscene runs ~3.2 s).
@@ -739,7 +745,8 @@ export class MapScene extends Phaser.Scene {
     this.player.move(0, 0);
     this.cameras.main.flash(200, 255, 255, 255);
     this.time.delayedCall(220, () => {
-      this.scene.launch('battle', { enemyId: enemy.enemyId, mapKey: this.scene.key } as BattleData);
+      const battle = FIGHT_MAPS.includes(this.scene.key) ? 'fight' : 'battle';
+      this.scene.launch(battle, { enemyId: enemy.enemyId, mapKey: this.scene.key } as BattleData);
       this.scene.pause();
     });
   }

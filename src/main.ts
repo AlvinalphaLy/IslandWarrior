@@ -2,8 +2,10 @@ import Phaser from 'phaser';
 import { PreloadScene } from './scenes/PreloadScene';
 import { MapScene } from './scenes/MapScene';
 import { BattleScene } from './scenes/BattleScene';
+import { FightScene } from './scenes/FightScene';
 import { BowScene } from './scenes/BowScene';
 import { initUi } from './ui';
+import { SITE_ROOT } from './siteRoot';
 
 initUi();
 
@@ -21,6 +23,8 @@ const game = new Phaser.Game({
     height: 270,
   },
   physics: { default: 'arcade', arcade: { debug: false } },
+  // maps, tilesets and sprites are public/ files at the site root; the game page is game/index.html
+  loader: { path: SITE_ROOT },
   // one MapScene per Tiled map in public/assets/maps (scene key = map name)
   scene: [
     PreloadScene,
@@ -31,6 +35,7 @@ const game = new Phaser.Game({
     new MapScene('cyclops'),
     new MapScene('telepylus'),
     new BattleScene(),
+    new FightScene(),
     new BowScene(),
   ],
 });
