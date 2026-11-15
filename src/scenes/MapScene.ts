@@ -18,6 +18,7 @@ import {
   showVictory,
   hideVictory,
   showMissionsComplete,
+  updateTrials,
 } from '../ui';
 import { Enemy } from '../entities/Enemy';
 import { Ship } from '../entities/Ship';
@@ -333,6 +334,7 @@ export class MapScene extends Phaser.Scene {
       this.sailing && this.ship ? this.ship.pos : this.player,
     );
     setWeatherButton(this.weather.enabled);
+    this.showTrials();
     this.applyNight(this.weather.enabled, false);
 
     this.debugGfx = this.add.graphics().setDepth(10000).setVisible(false);
@@ -417,6 +419,7 @@ export class MapScene extends Phaser.Scene {
     const won = (this.registry.get('challengesWon') as string[] | undefined) ?? [];
     const first = !won.includes(this.scene.key);
     this.registry.set('challengesWon', [...won, ...(first ? [this.scene.key] : [])]);
+    this.showTrials();
     const lines = [...rewards];
     const st = this.stats;
     const prize = PRIZES[this.scene.key];
@@ -1979,18 +1982,33 @@ export class MapScene extends Phaser.Scene {
   // ---------------------------------------------------------------- the homecoming (all three trials won)
   /**
    * The outro, once all three trials are won and Odysseus is at the helm in the village (it plays once):
+   *   0. it starts at the helm, or when Odysseus walks up to the ship (the crew takes him aboard)
    *   1. dawn breaks if it is night (the villagers are out), two narrator cards close the voyage
    *   2. the ship sails itself back to its mooring (steering like the player would; a fade if an islet blocks it)
    *   3. Odysseus steps ashore and walks, on a route found around houses, fences and statues, to Mira
    *   4. Mira welcomes him home, then MISSIONS COMPLETE lists the trials and their prizes; E to play on
    */
   private checkHomecoming() {
-    if (this.homecoming || this.scene.key !== 'village' || !this.sailing || !this.ship) return;
+    if (this.homecoming || this.scene.key !== 'village' || !this.ship) return;
     if (this.cutscene || this.dialog || this.leaving || voyagePlaybackBlocks(this)) return;
     if (this.registry.get('homecomingDone')) return;
     const won = (this.registry.get('challengesWon') as string[] | undefined) ?? [];
     if (!TRIALS.every((t) => won.includes(t.key))) return;
+    if (!this.sailing) {
+      // on foot: walking up to the ship is enough, the crew takes you aboard
+      const h = this.ship.hull;
+      const d = Phaser.Math.Distance.Between(this.player.x, this.player.y,
+        Phaser.Math.Clamp(this.player.x, h.left, h.right), Phaser.Math.Clamp(this.player.y, h.top, h.bottom));
+      if (d > 34) return;
+      this.board(true);
+    }
     this.startHomecoming();
+  }
+
+  /** the trials tracker under the HUD (how many trials won, and whether the homecoming has played) */
+  private showTrials() {
+    const won = (this.registry.get('challengesWon') as string[] | undefined) ?? [];
+    updateTrials(TRIALS.filter((t) => won.includes(t.key)).length, TRIALS.length, !!this.registry.get('homecomingDone'));
   }
 
   private startHomecoming() {
@@ -2116,6 +2134,7 @@ export class MapScene extends Phaser.Scene {
     this.cutscene = true;
     this.player.frozen = true;
     this.registry.set('homecomingDone', true);
+    this.showTrials();
     this.cameras.main.flash(600, 255, 224, 140);
     showMissionsComplete(
       'Home to Ithaca',

@@ -123,6 +123,18 @@ export function showMissionsComplete(name: string, lines: string[]) {
   requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('show')));
 }
 
+/**
+ * The trials tracker under the HUD: 'Trials 1/3', then 'Trials 3/3 · Return to the ship' (glowing) until the
+ * homecoming has played, then 'Home to Ithaca ✓'.
+ */
+export function updateTrials(won: number, total: number, home: boolean) {
+  const el = document.getElementById('trials');
+  if (!el) return;
+  el.style.display = 'block';
+  el.classList.toggle('ready', won >= total && !home);
+  el.textContent = home ? 'Home to Ithaca ✓' : won >= total ? `Trials ${won}/${total} · Return to the ship` : `Trials ${won}/${total}`;
+}
+
 export function hideVictory() {
   const el = document.getElementById('victory')!;
   el.classList.remove('show');

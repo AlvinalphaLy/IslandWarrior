@@ -176,6 +176,28 @@
         border-radius: 4px;
         padding: 5px 10px;
       }
+      /* trials tracker (ui.ts updateTrials): how many of the three trials the game has recorded */
+      #trials {
+        position: absolute;
+        right: 110px;
+        top: 46px;
+        font-size: 14px;
+        background: #0009;
+        border: 1px solid #ffffff33;
+        border-radius: 4px;
+        padding: 5px 10px;
+        display: none;
+      }
+      #trials.ready {
+        border-color: #e9c46a;
+        color: #ffe08a;
+        animation: trialsGlow 1.4s ease-in-out infinite;
+      }
+      @keyframes trialsGlow {
+        50% {
+          box-shadow: 0 0 10px #e9c46a99;
+        }
+      }
       #weather:hover {
         background: #000c;
         border-color: #e9c46a;
@@ -385,6 +407,7 @@
       <button id="act">E</button>
       <button id="bow">Bow</button>
       <button id="weather" title="Night storm (N)">🌙 Night</button>
+      <div id="trials"></div>
       <div id="hud"></div>
       <div id="victory">
         <div class="title">VICTORY</div>
