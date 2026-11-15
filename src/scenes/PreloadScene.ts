@@ -54,6 +54,8 @@ export class PreloadScene extends Phaser.Scene {
       frameWidth: 128,
       frameHeight: 84,
     });
+    // the campfire put out by the night storm's rain (tools/make_campfire_out.py)
+    this.load.image('campfire_out', 'assets/tilesets/campfire_out.png');
     // wooden horse statue on the beach (tools/make_horse_statue.py)
     this.load.image('horse_statue', 'assets/props/horse_statue.png');
     // stone head of Polyphemus on the small south-east islet (tools/make_cyclops_head.py)

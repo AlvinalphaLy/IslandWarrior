@@ -26,7 +26,8 @@
     "format": "prettier --write \"src/**/*.{ts,css}\" \"server/**/*.ts\" \"integrations/**/*.{ts,html}\" \"agents/oracle/*.mjs\" \"tools/*.{mjs,ts}\" \"*.html\" \"*.ts\" \"deploy/*.yaml\" package.json tsconfig.json server/tsconfig.json agents/oracle/package.json .prettierrc.json",
     "format:check": "prettier --check \"src/**/*.{ts,css}\" \"server/**/*.ts\" \"integrations/**/*.{ts,html}\" \"agents/oracle/*.mjs\" \"tools/*.{mjs,ts}\" \"*.html\" \"*.ts\" \"deploy/*.yaml\" package.json tsconfig.json server/tsconfig.json agents/oracle/package.json .prettierrc.json",
     "smoke:story": "node --import tsx tools/story-smoke.mjs",
-    "smoke:challenges": "node --import tsx tools/challenges-smoke.mjs"
+    "smoke:challenges": "node --import tsx tools/challenges-smoke.mjs",
+    "smoke:weather": "node --import tsx tools/weather-smoke.mjs"
   },
   "dependencies": {
     "pg": "^8.16.3",

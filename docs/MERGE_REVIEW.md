@@ -1,5 +1,15 @@
 # Latest map integration review
 
+## Night-storm update (2026-11-15)
+
+The working tree was clean at `150cead`. Fetched `origin/main` at `388804e`, which contains the team's merged story pull request, and fast-forwarded to it. Reviewed `origin/map` through `6d60652`: three commits adding night/day controls, weather effects, villagers indoors and extinguished campfires. The intermediate torch was removed by the final incoming commit and remains removed.
+
+Four formatting/content conflicts (`index.html`, `MapScene.ts`, `PreloadScene.ts`, `ui.ts`) were resolved by normalizing the three merge inputs to the existing indentation before merging them. Existing voyage hooks, input guards, narration and challenge rewards remain intact.
+
+Review fixes: cancel scheduled lightning callbacks before destroying their graphics; release weather resources on scene shutdown; reject weather toggles during dialogue, story playback and challenge cinematics; reject interaction with villagers whose bodies are already disabled during their fade indoors. The original weather visuals and night persistence remain intact. `npm run smoke:weather` exercises these behaviors, including a toggle during lightning, cave exclusion and scene restarts. Challenge and story regression tests cover the existing episodes.
+
+## Previous challenge integration
+
 ## Source and conflict resolution
 
 Merged `origin/map` at `49409b1` into `feat/chert-tiger-vultr`. Local narration work was saved first in checkpoint `c43e635`. No remote push was performed.

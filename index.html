@@ -161,6 +161,25 @@
         display: none;
         pointer-events: auto;
       }
+      /* night storm toggle (Weather.ts): always visible, under the HUD */
+      #weather {
+        position: absolute;
+        right: 12px;
+        top: 46px;
+        pointer-events: auto;
+        cursor: pointer;
+        font: inherit;
+        font-size: 14px;
+        color: #fdf6e3;
+        background: #0009;
+        border: 1px solid #ffffff33;
+        border-radius: 4px;
+        padding: 5px 10px;
+      }
+      #weather:hover {
+        background: #000c;
+        border-color: #e9c46a;
+      }
       @media (pointer: coarse) {
         #dpad,
         #act,
@@ -350,7 +369,8 @@
     <div id="ui">
       <div id="hint">
         WASD / Arrows: move &nbsp;·&nbsp; E / Space: talk<br />F: shoot (once you have the bow)
-        &nbsp;·&nbsp; C: change skin &nbsp;·&nbsp; M: map overview &nbsp;·&nbsp; F1: collision debug
+        &nbsp;·&nbsp; N: night storm &nbsp;·&nbsp; C: change skin &nbsp;·&nbsp; M: map overview
+        &nbsp;·&nbsp; F1: collision debug
       </div>
       <div id="toast"></div>
       <div id="dialog">
@@ -364,6 +384,7 @@
       </div>
       <button id="act">E</button>
       <button id="bow">Bow</button>
+      <button id="weather" title="Night storm (N)">🌙 Night</button>
       <div id="hud"></div>
       <div id="victory">
         <div class="title">VICTORY</div>
