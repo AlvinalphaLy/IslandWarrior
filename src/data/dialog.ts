@@ -83,6 +83,29 @@ export const DIALOG: Record<string, DialogEntry> = {
     ],
   },
   // ---- the cave of Polyphemus (tools/build_cyclops_cave.py, src/entities/Archery.ts) ----
+  // Antinous, a suitor straining at the unstrung bow; talking to him starts the string-the-bow mini-game
+  suitor_intro: {
+    name: 'Antinous',
+    lines: [
+      'Hnngh! This cursed bow of Odysseus... I pull with all my strength and it only bends the wrong way!',
+      'You, beggar? Ha! Go on then, try. A recurve is not a longbow, they say. Bend it back against its curve... if you can.',
+    ],
+  },
+  suitor_laughs: {
+    name: 'Antinous',
+    lines: ['Ha! It sprang right back at you. Nobody strings that bow. Try again, if your arms can take it.'],
+  },
+  suitor_amazed: {
+    name: 'Antinous',
+    lines: [
+      'It... it bent? You strung it, without even straining?',
+      'You did not force it forward like a longbow. You bent it back, with the curve. Who ARE you?',
+    ],
+  },
+  suitor_after: {
+    name: 'Antinous',
+    lines: ['That bow knew its master. Go on, the axes are waiting below. I will just... stand here.'],
+  },
   bow_found: {
     name: 'The bow of Odysseus',
     lines: [

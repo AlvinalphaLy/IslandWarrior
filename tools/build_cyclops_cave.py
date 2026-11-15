@@ -257,6 +257,9 @@ def area(name, typ, x, y, w, h, **props):
 point("player", "player", LADDER_X * TS + 8, 4 * TS + 6, sprite="odysseus")
 area("exit_ladder", "exit", LADDER_X * TS + 1, 3 * TS - 2, 14, 9, target="village")
 point("bow", "bow", 7 * TS + 8, 5 * TS + 4, dialog="bow_found")
+# Antinous, a suitor straining at the unstrung bow (he holds it, so it is not on the floor): E -> the string-the-bow
+# mini-game (src/scenes/BowScene.ts); winning it hands Odysseus the bow
+point("antinous", "suitor", 7 * TS + 18, 5 * TS + 6, sprite="alex_alt", name="Antinous")
 
 if not SHORT:
     # zone 1 -> zone 2: target A sits below the chasm, right under where you stand in zone 1

@@ -1,11 +1,14 @@
 import Phaser from 'phaser';
 import { toast } from '../ui';
-import type { Dir } from './Character';
+import { createCharacterAnims, type Dir } from './Character';
 
 /**
  * Odysseus' bow and the archery puzzles of the Cyclops cave. Everything is driven by Spawns objects in the map:
  *
- *   bow     point  the bow lying on a stone: walk over it to pick it up (registry `items` gets 'bow'), `dialog`
+ *   bow     point  the bow lying on a stone: walk over it to pick it up (registry `items` gets 'bow'), `dialog`.
+ *                  Not shown when a `suitor` is on the map: he holds the bow instead.
+ *   suitor  point  Antinous straining to force the unstrung bow like a longbow (`sprite`, `name`). E starts the
+ *                  string-the-bow mini-game (BowScene); winning it gives Odysseus the bow.
  *   target  point  a bronze disc on a post (bottom centre). Hitting it opens the gate named in `opens`.
  *                  `face`: only arrows flying that way count ('right' = shot from the left). `rings`: the arrow must
  *                  first have passed through that many axe rings.
@@ -103,8 +106,10 @@ export interface ArcheryHost {
   scene: Phaser.Scene;
   walls: Phaser.Physics.Arcade.StaticGroup;
   player: Phaser.Physics.Arcade.Sprite & { facing: Dir };
-  /** open a dialog by its key in DIALOG */
-  say: (dialogKey: string) => void;
+  /** open a dialog by its key in DIALOG; `then` runs when it closes */
+  say: (dialogKey: string, then?: () => void) => void;
+  /** start the string-the-bow mini-game (BowScene) */
+  startBowGame?: () => void;
 }
 
 export class Archery {
@@ -119,6 +124,8 @@ export class Archery {
   private arrows: Arrow[] = [];
   private blockers: Phaser.Geom.Rectangle[];
   private bow: { spr: Phaser.GameObjects.Image; dialog: string } | null = null;
+  private suitor: { spr: Phaser.GameObjects.Sprite; bow: Phaser.GameObjects.Image | null; x: number; y: number; name: string;
+    timer: Phaser.Time.TimerEvent | null } | null = null;
   private lastShot = 0;
   private readonly scene: Phaser.Scene;
 
@@ -132,8 +139,10 @@ export class Archery {
       .filter((r) => BLOCKING.has(r.type ?? ''))
       .map((r) => new Phaser.Geom.Rectangle(r.x, r.y, r.width, r.height));
     const opened = this.opened;
+    const suitorHoldsBow = spawns.some((s) => s.type === 'suitor');
     for (const s of spawns) {
-      if (s.type === 'bow' && !this.hasBow) {
+      if (s.type === 'suitor') this.addSuitor(s);
+      if (s.type === 'bow' && !this.hasBow && !suitorHoldsBow) {
         this.bow = {
           spr: scene.add
             .image(s.x, s.y, 'bow')
@@ -699,6 +708,110 @@ export class Archery {
     this.host.walls.add(this.scene.add.zone(x, foot - h / 2, w, h));
   }
 
+  // ---------------------------------------------------------------- the suitor and the bow
+  /**
+   * Antinous: a suitor holding the unstrung bow, heaving it forward like a longbow and failing. He grunts, sweats and
+   * the bow springs back. Talking to him starts the string-the-bow mini-game (host.startBowGame); winning it hands
+   * Odysseus the bow (grantBow). Once the bow is yours he stands empty-handed and sulks.
+   */
+  private addSuitor(s: ArchSpawn) {
+    const scene = this.scene;
+    const sheet = prop(s, 'sprite', 'alex_alt');
+    createCharacterAnims(scene, sheet);
+    const spr = scene.add.sprite(s.x, s.y, sheet, 0).setOrigin(0.5, 1).setDepth(s.y);
+    spr.play(`${sheet}-idle-down`);
+    this.solid(s.x, s.y, 10, 5);
+    this.makeHeldBow();
+    const bow = this.hasBow ? null : scene.add.image(s.x + 7, s.y - 9, 'bow_held').setOrigin(0.5, 1).setDepth(s.y + 0.1);
+    const su = { spr, bow, x: s.x, y: s.y, name: prop(s, 'name', 'Antinous'), timer: null as Phaser.Time.TimerEvent | null };
+    this.suitor = su;
+    if (!bow) return;
+    // the struggle: heave (shake, lean, grunt) ... then the bow springs back out of shape
+    let beat = 0;
+    su.timer = scene.time.addEvent({
+      delay: 1400,
+      loop: true,
+      callback: () => {
+        if (!su.bow) return;
+        beat++;
+        scene.tweens.add({ targets: [su.spr, su.bow], x: '+=1', duration: 40, yoyo: true, repeat: 8 });
+        scene.tweens.add({ targets: su.bow, angle: { from: 0, to: 14 }, duration: 520, yoyo: true, ease: 'Sine.inOut' });
+        this.bubble(su.spr.x, su.spr.y - 30, beat % 3 === 0 ? 'It won\'t bend!' : beat % 3 === 1 ? 'Hnnngh!' : 'Come ON...');
+        if (beat % 2 === 0) {
+          const drop = scene.add.rectangle(su.spr.x - 5, su.spr.y - 26, 1, 2, 0x9fd8ff).setDepth(su.spr.depth + 1);
+          scene.tweens.add({ targets: drop, y: drop.y + 10, alpha: 0, duration: 600, onComplete: () => drop.destroy() });
+        }
+      },
+    });
+  }
+
+  /** the unstrung recurve bow in the suitor's hands: tips curling forward, the string hanging loose */
+  private makeHeldBow() {
+    const tx = this.scene.textures;
+    if (tx.exists('bow_held')) return;
+    const rows = [
+      '.......OO.',
+      '......OWO.',
+      '.....OWO..',
+      '....OWO...',
+      '...OWO....',
+      '...OWO....',
+      '..OWWO....',
+      '..OBBO....',
+      '..OGGO....',
+      '..OBBO....',
+      '..OWWO....',
+      '...OWO....',
+      '...OWO....',
+      '....OWO...',
+      '.....OWO..',
+      '......OWO.',
+      '.......OO.',
+      '......s...',
+      '.....s....',
+      '....s.....',
+    ];
+    const col: Record<string, string> = { O: '#2a1810', W: '#9a6232', B: '#5a3a22', G: '#c9962f', s: '#f0e6d0' };
+    const c = tx.createCanvas('bow_held', 10, rows.length)!;
+    const ctx = c.getContext();
+    rows.forEach((r, y) => [...r].forEach((ch, x) => { if (ch !== '.') { ctx.fillStyle = col[ch]; ctx.fillRect(x, y, 1, 1); } }));
+    c.refresh();
+  }
+
+  private bubble(x: number, y: number, text: string) {
+    const t = this.scene.add
+      .text(x, y, text, { fontFamily: 'Pixelify Sans, monospace', fontSize: '8px', color: '#ffffff', stroke: '#2a1d18', strokeThickness: 2 })
+      .setOrigin(0.5, 1)
+      .setDepth(10000);
+    this.scene.tweens.add({ targets: t, y: y - 8, alpha: 0, delay: 500, duration: 700, onComplete: () => t.destroy() });
+  }
+
+  /** E near the suitor: before the bow is yours, his scoffing and then the mini-game; after, his sulking. */
+  tryTalk(probe: { x: number; y: number }) {
+    const su = this.suitor;
+    if (!su || Phaser.Math.Distance.Between(probe.x, probe.y, su.x, su.y - 6) > 20) return false;
+    if (this.hasBow) this.host.say('suitor_after');
+    else this.host.say('suitor_intro', () => this.host.startBowGame?.());
+    return true;
+  }
+
+  /** The mini-game was won: the bow leaves the suitor's hands for Odysseus'. */
+  grantBow() {
+    const su = this.suitor;
+    if (this.hasBow) return;
+    this.scene.registry.set('items', [...((this.scene.registry.get('items') as string[] | undefined) ?? []), 'bow']);
+    su?.timer?.remove();
+    if (su?.bow) {
+      const bow = su.bow;
+      su.bow = null;
+      const p = this.host.player;
+      this.scene.tweens.add({ targets: bow, x: p.x, y: p.y - 6, alpha: 0, duration: 450, ease: 'Quad.in', onComplete: () => bow.destroy() });
+      this.bubble(su.spr.x, su.spr.y - 30, '...!');
+    }
+    this.scene.cameras.main.flash(200, 255, 236, 170);
+    this.host.say('suitor_amazed', () => this.host.say('bow_found'));
+  }
+
   // ---------------------------------------------------------------- the bow
   private pickUp() {
     if (!this.bow) return;
@@ -762,8 +875,7 @@ export class Archery {
         strokeThickness: 2,
       })
       .setOrigin(0.5, 1)
-      .setDepth(10000)
-      .setResolution(4);
+      .setDepth(10000);
     this.scene.tweens.add({
       targets: t,
       y: t.y - 8,

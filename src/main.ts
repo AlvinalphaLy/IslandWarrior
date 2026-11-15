@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { PreloadScene } from './scenes/PreloadScene';
 import { MapScene } from './scenes/MapScene';
 import { BattleScene } from './scenes/BattleScene';
+import { BowScene } from './scenes/BowScene';
 import { initUi } from './ui';
 
 initUi();
@@ -30,6 +31,7 @@ const game = new Phaser.Game({
     new MapScene('cyclops'),
     new MapScene('telepylus'),
     new BattleScene(),
+    new BowScene(),
   ],
 });
 

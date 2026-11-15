@@ -25,6 +25,7 @@ import { Harbor } from '../entities/Harbor';
 import { Weather } from '../entities/Weather';
 import { CHEST_REWARDS, ENEMIES, FX_FRAME, PlayerStats, START_STATS } from '../data/enemies';
 import type { BattleData, BattleResult } from './BattleScene';
+import type { BowGameData } from './BowScene';
 
 const FLIP_H = 0x80000000;
 const FLIP_V = 0x40000000;
@@ -257,7 +258,13 @@ export class MapScene extends Phaser.Scene {
     this.buildCollision();
     this.spawnActors();
     this.archery = new Archery(
-      { scene: this, walls: this.walls, player: this.player, say: (key) => this.say(key) },
+      {
+        scene: this,
+        walls: this.walls,
+        player: this.player,
+        say: (key, then) => this.say(key, then),
+        startBowGame: () => this.startBowGame(),
+      },
       this.layer('Spawns'),
       this.layer('Collision'),
     );
@@ -304,6 +311,8 @@ export class MapScene extends Phaser.Scene {
     showDialog(null);
     updateHud(this.stats);
     this.events.on('battle-end', this.onBattleEnd, this);
+    this.events.on('bow-end', this.onBowEnd, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.events.off('bow-end', this.onBowEnd, this));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () =>
       this.events.off('battle-end', this.onBattleEnd, this),
     );
@@ -893,15 +902,30 @@ export class MapScene extends Phaser.Scene {
     }
   }
 
-  /** Open a dialog by key (used by Archery for the bow). */
-  private say(key: string) {
+  /** Open a dialog by key (used by Archery for the bow); `then` runs when it closes. */
+  private say(key: string, then?: () => void) {
     // Archery emits bow_found only after the actual bow item has been collected.
     if (key === 'bow_found' && this.scene.key === 'cyclops')
       publishVoyageEvent(this, { type: 'bow_found' });
-    this.dialog = { entry: dialogFor(key), line: 0 };
+    this.dialog = { entry: dialogFor(key), line: 0, onClose: then };
     this.player.frozen = true;
     this.player.move(0, 0);
     this.renderDialog();
+  }
+
+  /** The suitor hands over the bow to try: the string-the-bow mini-game runs over this paused map (BowScene). */
+  private startBowGame() {
+    if (this.leaving) return;
+    this.player.move(0, 0);
+    this.player.frozen = true;
+    this.scene.launch('bowstring', { mapKey: this.scene.key } as BowGameData);
+    this.scene.pause();
+  }
+
+  private onBowEnd(won: boolean) {
+    this.player.frozen = false;
+    if (won) this.archery?.grantBow();
+    else this.say('suitor_laughs');
   }
 
   /** Cycle the player through PLAYER_SKINS (Odysseus, Adam, the Greek gods, and prize skins once won). */
@@ -958,6 +982,8 @@ export class MapScene extends Phaser.Scene {
       }
       return this.goAshore();
     }
+    // the suitor straining at the bow (Cyclops cave): talk to him to try it yourself
+    if (this.archery?.tryTalk(this.player.probe)) return;
     const p = this.player.probe;
     let best: Interactable | null = null;
     let bestD = 14;
