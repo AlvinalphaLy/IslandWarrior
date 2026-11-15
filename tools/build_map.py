@@ -112,7 +112,7 @@ for cy in range(H):
 CLEARED_AREAS = [
     (266, 290, 342, 346),   # the islet in the bay: only the Cyclops head stands there
     (400, 336, 444, 364),   # the small south-east islet: its rock makes way for Circe's statue
-    (184, 344, 216, 392),   # the narrow islet south of the bay: its flower makes way for the giant's fist
+    (184, 344, 216, 392),   # the narrow islet south of the bay: its flower makes way for King Antiphates
 ]
 def cleared(o):
     cx, cy = o['x'] + TS / 2, o['y'] + TS / 2
@@ -469,17 +469,17 @@ spawn_objs.append(dict(id=next_id(), name='cyclops_head', type='statue', x=304.0
                                    dict(name='target', type='string', value='cyclops'),
                                    dict(name='arrive', type='string', value='282,340'),
                                    dict(name='footW', type='int', value=26), dict(name='footH', type='int', value=9)]))
-# the fist of a Laestrygonian giant (tools/make_laestrygon_props.py) on the narrow islet south of the bay. The first E
-# (on foot or from the ship) makes it hurl the boulder in its grip; after that E sweeps the ship into the giants'
-# harbour (tools/build_harbor.py), which you escape by sailing out under their boulders.
-spawn_objs.append(dict(id=next_id(), name='giant_fist', type='statue', x=199.0, y=378.0, point=True, width=0, height=0,
+# a statue of Antiphates, king of the Laestrygonians (tools/make_laestrygon_props.py), on the narrow islet south of the
+# bay. The first E (on foot or from the ship) makes him hurl the boulder he holds overhead; after that E sweeps the
+# ship into the giants' harbour (tools/build_harbor.py), which you escape by sailing out under their boulders.
+spawn_objs.append(dict(id=next_id(), name='antiphates', type='statue', x=199.0, y=378.0, point=True, width=0, height=0,
                        rotation=0, visible=True,
-                       properties=[dict(name='sprite', type='string', value='giant_fist'),
-                                   dict(name='dialog', type='string', value='giant_fist'),
+                       properties=[dict(name='sprite', type='string', value='antiphates'),
+                                   dict(name='dialog', type='string', value='antiphates'),
                                    dict(name='awaken', type='string', value='hurl'),
                                    dict(name='target', type='string', value='telepylus'),
                                    dict(name='arrive', type='string', value='199,388'),
-                                   dict(name='footW', type='int', value=12),
+                                   dict(name='footW', type='int', value=14),
                                    dict(name='footH', type='int', value=6)]))
 sign_i = 0
 for g, members in groups.items():

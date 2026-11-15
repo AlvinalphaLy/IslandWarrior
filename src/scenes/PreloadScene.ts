@@ -38,9 +38,9 @@ export class PreloadScene extends Phaser.Scene {
     for (const k of ['arrow', 'bow', 'axe', 'boulder', 'bridge']) this.load.image(k, `assets/props/${k}.png`);
     this.load.spritesheet('target', 'assets/props/target.png', { frameWidth: 14, frameHeight: 22 });
     this.load.spritesheet('sheep', 'assets/props/sheep.png', { frameWidth: 18, frameHeight: 15 });
-    // the Laestrygonians (tools/make_laestrygon_props.py, src/entities/Harbor.ts): the fist on the narrow islet
-    // (0 gripping its boulder, 1 open), the giants on the harbour cliffs (0 rock overhead, 1 thrown), their rocks
-    this.load.spritesheet('giant_fist', 'assets/props/giant_fist.png', { frameWidth: 20, frameHeight: 41 });
+    // the Laestrygonians (tools/make_laestrygon_props.py, src/entities/Harbor.ts): the statue of King Antiphates on
+    // the narrow islet (0 boulder overhead, 1 thrown), the giants on the harbour cliffs (0 rock overhead, 1 thrown), rocks
+    this.load.spritesheet('antiphates', 'assets/props/antiphates.png', { frameWidth: 22, frameHeight: 34 });
     this.load.spritesheet('giant', 'assets/props/giant.png', { frameWidth: 26, frameHeight: 28 });
     this.load.image('rock', 'assets/props/rock.png');
     // Circe's statue on the islet (tools/make_witch_statue.py): 2 frames of 16x32, glowing eyes

@@ -277,7 +277,7 @@ export class MapScene extends Phaser.Scene {
         const statue = this.add.sprite(s.x, s.y, key).setOrigin(0.5, 1).setDepth(s.y - fh / 2);
         // `lure`: a sprite (the treasure chest, the amphora) stands at `lureAt` (default: on the statue's spot) until
         // used; `awaken` says what using it does: 'rise' (default, the statue rises: awaken()), 'pour' (pourWine()),
-        // or 'hurl' (no lure: the giant's fist throws the boulder in its grip the first time: hurlBoulder())
+        // or 'hurl' (no lure: King Antiphates hurls the boulder he holds the first time: hurlBoulder())
         const lure = prop(s, 'lure', '');
         const awakenProp = prop<string>(s, 'awaken', 'rise');
         const style: StatueSpot['style'] = awakenProp === 'pour' || awakenProp === 'hurl' ? awakenProp : 'rise';
@@ -285,7 +285,7 @@ export class MapScene extends Phaser.Scene {
         const la = prop(s, 'lureAt', '').split(',').map(Number);
         const [lx, ly] = la.length === 2 ? la : [s.x, s.y];
         const chest = asleep && lure ? this.add.sprite(lx, ly, lure, 0).setOrigin(0.5, 1).setDepth(ly - 2) : null;
-        if (style === 'hurl' && !asleep) statue.setFrame(1);   // the fist stands open, its boulder thrown
+        if (style === 'hurl' && !asleep) statue.setFrame(1);   // arms flung out, the boulder thrown
         // `aura`: true = black smoke, or the name of an AURAS palette ('wine')
         const auraProp = prop<boolean | string>(s, 'aura', false);
         const aura: AuraStyle | null = auraProp === true ? 'black' : typeof auraProp === 'string' && auraProp in AURAS ? auraProp as AuraStyle : null;
@@ -532,8 +532,12 @@ export class MapScene extends Phaser.Scene {
   private statueInReach(list: { it: Interactable; x: number; y: number }[] = this.statues) {
     if (!this.ship) return null;
     const h = this.ship.hull;
-    return list.find((st) => Phaser.Math.Distance.Between(st.x, st.y - 8,
-      Phaser.Math.Clamp(st.x, h.x, h.right), Phaser.Math.Clamp(st.y - 8, h.y, h.bottom)) <= 30)?.it ?? null;
+    // the nearest one within 30px of the hull (two statues can both be in reach of a 72px-wide galley)
+    const d = (st: { x: number; y: number }) => Phaser.Math.Distance.Between(st.x, st.y - 8,
+      Phaser.Math.Clamp(st.x, h.x, h.right), Phaser.Math.Clamp(st.y - 8, h.y, h.bottom));
+    let best: { it: Interactable; x: number; y: number } | null = null;
+    for (const st of list) if (d(st) <= 30 && (!best || d(st) < d(best))) best = st;
+    return best?.it ?? null;
   }
 
   /** Read the statue's lines; closing them takes you into its dungeon. While the lure stands there, open it instead. */
@@ -716,8 +720,8 @@ export class MapScene extends Phaser.Scene {
   }
 
   /**
-   * The Laestrygonian fist wakes: it trembles, the ground rumbles, and it hurls the boulder in its grip far out to
-   * sea (a long arc, a shadow racing ahead of it, a towering splash); the hand stands open (frame 1). ~2.6 s.
+   * The Laestrygonian king's statue wakes: it trembles, the ground rumbles, and it hurls the boulder it holds over its
+   * head far out to sea (a long arc, a shadow racing ahead, a towering splash); its arms stay flung out (frame 1). ~2.6 s.
    */
   private hurlBoulder(st: StatueSpot) {
     st.asleep = false;
@@ -730,7 +734,7 @@ export class MapScene extends Phaser.Scene {
     this.cameras.main.shake(700, 0.003);
     at(650, () => {
       s.setFrame(1);
-      const sx = st.x, sy = st.y - 36;                          // the boulder sat in the fist, at the top of the sprite
+      const sx = st.x, sy = st.y - s.height + 4;                // the boulder was held at the top of the sprite
       const tx = st.x + 150, ty = Math.min(this.physics.world.bounds.height - 12, st.y - 40);   // far out over the bay
       const rock = this.add.image(sx, sy, 'rock').setScale(1.2).setDepth(10000);
       const shadow = this.add.ellipse(sx, st.y - 2, 12, 4, 0x0a1830, 0.4).setDepth(-400);

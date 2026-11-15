@@ -1,7 +1,8 @@
 """Draw the Laestrygonian props as 16px-style pixel art, into public/assets/props/:
 
-  giant_fist.png  2 frames of 20x41: a weathered stone fist rising from rubble on the narrow islet,
-                  gripping a boulder (0, dormant) / open and empty after hurling it (1, awake)
+  antiphates.png  2 frames of 22x34: a granite statue of Antiphates, king of the Laestrygonians, on a plinth on the
+                  narrow islet: crowned and bearded, a boulder raised over his head (0, dormant) / arms flung out,
+                  the boulder thrown (1, awake)
   giant.png       2 frames of 26x28: a Laestrygonian giant on the harbour cliffs, a rock held over his head (0) /
                   arms flung out, just thrown (1). The game draws it at 2x: they are giants.
   rock.png        12x10: a thrown boulder (also drawn at 2x in flight)
@@ -16,8 +17,9 @@ from PIL import Image
 OUT = 'public/assets/props'
 PAL = {
     'O': (38, 30, 28),
-    # weathered granite of the fist
-    'S': (176, 164, 140), 's': (128, 118, 102), 'T': (206, 196, 172), 'c': (96, 88, 78),
+    # granite of the king's statue
+    'S': (164, 148, 126), 's': (120, 106, 90), 'T': (198, 184, 160), 'c': (40, 32, 28),
+    'b': (96, 82, 68), 'd': (128, 112, 94),
     # boulder (cooler grey)
     'G': (104, 106, 114), 'g': (72, 74, 84), 'H': (140, 142, 150), 'h': (176, 178, 184),
     # giant: sunburnt skin, beard, leather
@@ -36,69 +38,55 @@ def sprite(rows, w=None):
                 a[y, x] = (*PAL[ch], 255)
     return a
 
-FOREARM = [
-    '..OSTSSSSSSSSSsO....',
-    '..OSTSSSSSSSSssO....',
-    '...OTSSSSSSSSsO.....',
-    '...OTSSSSScSSsO.....',
-    '...OTSSSSScSssO.....',
-    '...OTSSSSSScSsO.....',
-    '...OTSSSSSSSssO.....',
-    '...OTSSSSSSSSsO.....',
-    '...OTSSScSSSSsO.....',
-    '...OTSSSccSSssO.....',
-    '...OTSSSScSSSsO.....',
-    '...OTSSSSSSSSsO.....',
-    '...OTSSSSSSSssO.....',
-    '...OTSSSSSSSSsO.....',
-    '...OTSSSSSScSsO.....',
-    '...OTSSSSScSssO.....',
-    '...OTSSSSSSSSsO.....',
-    '...OTSSSSSSSssO.....',
-    '...OTSSSSSSSSsO.....',
-    '..OOTSSSSSSSSsOO....',
-    '.OGmOTSSSSSSssOmGO..',
-    '.OGGHOTSSSSSsOGHGGO.',
-    'OGHHGgOSSSSsOgGHHGO.',
-    'OGgmGGgOOOOOgGGmgGgO',
-    'OOOOOOOOOOOOOOOOOOOO',
+KING_BODY = [                       # from the shoulders down: beard, belted robe, legs, plinth
+    '...OSSSSSSSSSSSSSSO...',
+    '...OTSSSSSSSSSSSSsO...',
+    '...OTSSSSSSSSSSSssO...',
+    '....OTSSSSSSSSSssO....',
+    '....OssssssssssssO....',      # belt (carved)
+    '....OSSSSSSSSSSSsO....',
+    '....OTSSSSSSSSSSsO....',
+    '....OTSSSSOSSSSSsO....',
+    '....OTSSSO.OSSSSsO....',
+    '....OTSSO...OSSSsO....',
+    '....OSSSO...OSSSO.....',
+    '...OSSSSO...OSSSSO....',
+    '..OOOOOOOOOOOOOOOOO...',
+    '..OTTTTTTTTTTTTTTTO...',
+    '..OSSSSSSSSSSSSSssO...',
+    '..OsssssssssssssssO...',
+    '..OOOOOOOOOOOOOOOOO...',
 ]
-FIST_HOLD = [
-    '.......OOOOO........',
-    '.....OOHHhhHOO......',
-    '....OHHhhhhHHGO.....',
-    '...OGHHhhhHHHGGO....',
-    '...OGHHHHHHHGGgO....',
-    '..OGGHHHHHHGGGggO...',
-    '..OGGGHHHGGGGgggO...',
-    '..OOTSSOTSSOTSSOOO..',
-    '.OTSOTSSOTSSOTSSsO..',
-    '.OTSOTSSOTSSOTSSsO..',
-    '.OTsOTSsOTSsOTSssO..',
-    '.OOcOOcOOOcOOOcOsO..',
-    '..OSSSSSSSSSSSssO...',
-    '..OSSSSSSSSSSSssO...',
-    '...OSSSSSSSSSssO....',
-    '...OTSSSSSSSSsO.....',
-] + FOREARM
-FIST_OPEN = [
-    '....................',
-    '..OO..OO..OO..OO....',
-    '.OTO.OTO.OTO.OTO....',
-    '.OTO.OTO.OTO.OTO....',
-    '.OTSOOTSOOTSOOTSO...',
-    '.OTSOOTSOOTSOOTSO...',
-    '.OTSSSSSSSSSSSSsO.OO',
-    '.OTSSSSSSSSSSSSsOOTO',
-    '.OTSSSSSSSSSSSSssTsO',
-    '..OTSSSScSSSSSSssOO.',
-    '..OTSSSSSSSSSSSsO...',
-    '..OSSSSSSSSSSSssO...',
-    '..OSSSSSSSSSSSssO...',
-    '...OSSSSSSSSSssO....',
-    '...OSSSSSSSSSssO....',
-    '...OTSSSSSSSSsO.....',
-] + FOREARM
+KING_HOLD = [
+    '......OOOOOOOOO.......',
+    '....OOGGHHHHHHGOO.....',
+    '...OGGHHhhhhHHHGGO....',
+    '...OGHHhhhhHHHHGgO....',
+    '...OGGHHHHHHHHGGgO....',
+    '.OO.OOGGGGGGGGggOO.OO.',
+    'OSTO.OOOOOOOOOOOO.OTSO',
+    'OSTO..............OTSO',
+    'OSsO...OTOTOTO....OsSO',      # crown points
+    '.OSO...OTOTOTO....OSO.',
+    '.OSO..OTTTTTTTO...OSO.',      # crown band
+    '.OSO..OSSSSSSSO...OSO.',
+    '.OSO..OScSSScSO...OSO.',      # eyes
+    '.OSSOOOSSSsSSSOOOOSSO.',      # nose, shoulders
+    '..OSSSObdbdbdbOSSSSO..',      # beard (carved)
+    '..OSSSSObdbdbOSSSSSO..',
+    '...OSSSSObdbOSSSSSO...',
+] + KING_BODY
+KING_THROWN = ['......................'] * 8 + [
+    '.......OTOTOTO........',
+    '.......OTOTOTO........',
+    '......OTTTTTTTO.......',
+    '......OSSSSSSSO.......',
+    '......OScSSScSO.......',
+    'OOOOOOOSSSsSSSOOOOOOO.',      # arms flung out
+    'OTSSSSObdbdbdbOSSSSTO.',
+    'OsSSSSSObdbdbOSSSSSsO.',
+    '.OOOOSSSObdbOSSSOOOO..',
+] + KING_BODY
 
 GIANT_HOLD = [
     '.........OOOOOOO..........',
@@ -163,7 +151,7 @@ def save(name, frames):
     return im, w, h
 
 if __name__ == '__main__':
-    out = {'giant_fist': save('giant_fist', [FIST_HOLD, FIST_OPEN]), 'giant': save('giant', [GIANT_HOLD, GIANT_THROW]),
+    out = {'antiphates': save('antiphates', [KING_HOLD, KING_THROWN]), 'giant': save('giant', [GIANT_HOLD, GIANT_THROW]),
            'rock': save('rock', [ROCK])}
     for k, (_, w, h) in out.items():
         print(f'{k}: frames of {w}x{h}')
