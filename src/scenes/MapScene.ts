@@ -27,8 +27,7 @@ import { Harbor } from '../entities/Harbor';
 import { Weather } from '../entities/Weather';
 import { WalkGrid } from '../entities/Pathfind';
 import type { MoveInput } from '../entities/Player';
-import { showNarration } from '../narration';
-import type { NarrationCard } from '../data/narration';
+import { narrate } from '../narration';
 import { CHEST_REWARDS, ENEMIES, FX_FRAME, PlayerStats, START_STATS } from '../data/enemies';
 import type { BattleData, BattleResult } from './BattleScene';
 import type { BowGameData } from './BowScene';
@@ -159,13 +158,6 @@ const TRIALS = [
   { key: 'circe', name: "Circe's Grotto", prize: 'the FaZe Odysseus skin' },
   { key: 'cyclops', name: 'The Cave of Polyphemus', prize: "Maron's wine (+10 max HP)" },
   { key: 'telepylus', name: 'Escape from Telepylus', prize: 'the bronze-hulled ship' },
-];
-/** the brief outro before the ship turns for home (shown as text: no voice files for these lines) */
-const HOMECOMING_CARDS: NarrationCard[] = [
-  { key: 'homecoming_1', speaker: 'Narrator', voice: 'narrator',
-    text: 'Three trials, three victories. The witch, the Cyclops and the giants of Telepylus are behind you.' },
-  { key: 'homecoming_2', speaker: 'Narrator', voice: 'narrator',
-    text: 'Your crew takes up the oars one last time. Home, to the shore of Ithaca.' },
 ];
 /**
  * What each challenge gives the first time it is won (on top of its hoard, and the full heal every win gives):
@@ -2022,8 +2014,8 @@ export class MapScene extends Phaser.Scene {
       this.applyNight(false, true);
     }
     this.scene.pause();
-    showNarration(HOMECOMING_CARDS, {
-      audio: false,
+    // the narrator's voice (public/assets/voice/homecoming_*.mp3, made by `npm run voices -- --only=homecoming`)
+    narrate('homecoming', {
       onClose: () => {
         this.scene.resume();
         if (!this.homecoming) return;

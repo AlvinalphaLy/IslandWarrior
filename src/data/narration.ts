@@ -215,3 +215,19 @@ NARRATION.voyage = Object.values(VOYAGE_BEATS).flat();
 
 /** Only new challenge dialogue; unchanged voyage recordings remain cached. */
 NARRATION.challenges = Object.values(CHALLENGE_BEATS).flat();
+
+/** The homecoming outro (MapScene.startHomecoming): all three trials won, the ship turns for Ithaca. */
+NARRATION.homecoming = [
+  {
+    key: 'homecoming_1',
+    speaker: 'Narrator',
+    voice: 'narrator',
+    text: 'Three trials, three victories. The witch, the Cyclops and the giants of Telepylus are behind you.',
+  },
+  {
+    key: 'homecoming_2',
+    speaker: 'Narrator',
+    voice: 'narrator',
+    text: 'Your crew takes up the oars one last time. Home, to the shore of Ithaca.',
+  },
+];

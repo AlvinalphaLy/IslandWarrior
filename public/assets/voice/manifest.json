@@ -390,5 +390,19 @@
     "provider": "ElevenLabs",
     "model": "eleven_multilingual_v2",
     "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "homecoming_1": {
+    "hash": "2ed06604fa0f4dd8257067790e99bf1d3cae12cd137bd20c681e657bead2b4d6",
+    "file": "homecoming_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "homecoming_2": {
+    "hash": "71390dbf34df51ac2f4441bbd1f3ffa8416b609e9ac94962bd96a386615be447",
+    "file": "homecoming_2.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
   }
 }
