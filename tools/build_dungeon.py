@@ -150,9 +150,10 @@ point('player', 'player', LADDER_X + 0.5, 3.6, sprite='adam')
 area('exit_ladder', 'exit', LADDER_X * TS + 1, 2 * TS - 2, 14, 9, target='village')
 # enemies: `enemy` = id in src/data/enemies.ts, names must be unique (defeats are remembered by name)
 for name, enemy, tx, ty in [
-    ('mole_a', 'mole', 12, 6.5), ('digger_a', 'mole_digger', 19, 8.5), ('wyvern_a', 'wyvernling', 27, 7),
-    ('lurker_a', 'lurker', 26, 13.5), ('drake_a', 'mirror_drake', 14, 13.8), ('knight_a', 'gold_knight', 5, 14),
-    ('candy_a', 'candy_kid', 4, 19.5), ('mole_b', 'mole_pink', 11, 20), ('golem', 'gumball_golem', 21, 20.5),
+    # Odyssey enemies (tools/greek_battlers.py); the Fantasy Battlers ids in enemies.ts still work here too
+    ('raider_a', 'raider', 12, 6.5), ('captain_a', 'raider_captain', 19, 8.5), ('siren_a', 'siren', 27, 7),
+    ('siren_b', 'siren_violet', 26, 13.5), ('shade_a', 'shade', 14, 13.8), ('shade_b', 'shade_restless', 5, 14),
+    ('raider_b', 'raider', 4, 19.5), ('shade_c', 'shade', 11, 20), ('polyphemus', 'polyphemus', 21, 20.5),
 ]:
     point(name, 'enemy', tx, ty, enemy=enemy)
 area('chest_golem', 'chest', 28 * TS, 19 * TS, 32, 16, dialog='chest_golem')

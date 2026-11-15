@@ -29,7 +29,7 @@ export const DIALOG: Record<string, DialogEntry> = {
   chest_1: { name: 'Chest', lines: ['You found an old map of the sewers.'] },
 
   // ---- sewer dungeon ----
-  chest_golem: { name: 'Treasure', lines: ["The Gumball Golem's hoard! You found the Sewer Crown."] },
+  chest_golem: { name: 'Treasure', lines: ["Polyphemus' hoard! Among the cheeses and wine jars lies a bronze helmet fit for a king of Ithaca."] },
 };
 
 export function dialogFor(key: string): DialogEntry {

@@ -88,6 +88,7 @@ await page.screenshot({ path: 'cache/shot_back.png' });
 // locked door: house_1 (top-left blue house) has no target
 await page.evaluate(() => {
   const s = window.game.scene.getScene('village'); const d = s.portals.find((p) => p.id === 'house_1');
+  s.npcs.forEach((n) => { n.talking = true; n.body.enable = false; }); // Mira lives right by this door
   s.player.setPosition(d.rect.centerX, d.rect.bottom + 8); s.player.face('up');
 });
 await new Promise((r) => setTimeout(r, 200));
@@ -108,9 +109,9 @@ await page.screenshot({ path: 'cache/shot_dungeon.png' });
 await page.keyboard.press('KeyM'); await new Promise((r) => setTimeout(r, 300));
 await page.screenshot({ path: 'cache/shot_dungeon_overview.png' });
 await page.keyboard.press('KeyM');
-// battle: walk into the first mole
+// battle: walk into the first raider
 const enemiesBefore = await page.evaluate(() => {
-  const s = window.game.scene.getScene('dungeon'); const e = s.enemies.find((e) => e.spawnName === 'mole_a');
+  const s = window.game.scene.getScene('dungeon'); const e = s.enemies.find((e) => e.spawnName === 'raider_a');
   s.player.setPosition(e.x - 30, e.y); s.player.face('right'); return s.enemies.length;
 });
 await new Promise((r) => setTimeout(r, 200));

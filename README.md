@@ -13,8 +13,9 @@ npm run dev        # http://localhost:5173
 |---|---|
 | WASD / Arrows | Move |
 | E / Space / Enter | Talk to an NPC, read a sign, advance dialog |
-| Walk up into a house door | Goes down into the Fungus Cave. Every house leads there. |
-| Walk up into the cave ladder | Climbs back out through the door you came in by |
+| Walk up into a house door | Red house (left, where you start) → **Fungus Cave**. Green fenced house (bottom-right) → **Sewer Dungeon**. The other four houses are locked. |
+| Walk up into a ladder | Climbs back out through the door you came in by |
+| Touch a monster (dungeon) | Starts a battle. **1–4** or the arrow keys + Enter choose Attack / Defend / Potion / Run. |
 | C | Change the player's skin: Adam → Zeus → Hermes → Hades → Heracles → Aphrodite |
 | M | Toggle whole-map overview |
 | F1 | Debug overlay: collision rectangles, door triggers, NPC wander areas, physics bodies |
@@ -42,6 +43,7 @@ npm run map        # full rebuild (about 3 min): reconstruct, build, verify
 npm run map:build  # rebuild Tiled JSON + collision only
 npm run compare    # verify only
 npm run map:cave   # rebuild the cave map
+npm run map:dungeon # rebuild the sewer dungeon
 npm run smoke      # headless test: walk, collide, talk, house -> cave -> back (needs `npm run dev` running and Chrome)
 ```
 
@@ -67,6 +69,33 @@ npm run smoke      # headless test: walk, collide, talk, house -> cave -> back (
 
 The map has a `dark` property, which adds a vignette overlay.
 
+## The Sewer Dungeon (Fantasy Battlers)
+
+`tools/build_dungeon.py` writes `public/assets/maps/dungeon.json` from the **Sewers** tileset in the Fungus Cave pack. It's a 32×22 hall with a water channel under the top wall and two canals crossing from opposite sides, so the route zig-zags down to the boss. Spawns of type `enemy` place monsters from `src/data/enemies.ts`.
+
+The **Fantasy Battlers** sprites are copied to `public/assets/battlers/`. Each is used twice: as the monster standing on the map (`src/entities/Enemy.ts`, which chases you within its `aggro` range) and as the battle sprite.
+
+| Enemy | Sprite | HP | ATK | XP |
+|---|---|---|---|---|
+| Sewer Mole / Pink Mole | 01 / 01b | 12 / 14 | 3 / 4 | 4 / 5 |
+| Mole Digger | 02 | 16 | 4 | 6 |
+| Wyvernling | 06 | 14 | 5 | 6 |
+| Lurker | 04 | 20 | 5 | 8 |
+| Mirror Drake (heals) | 05b | 26 | 6 | 10 |
+| Candy Kid (heals) | 10 | 18 | 4 | 8 |
+| Gold Knight | 07 | 32 | 7 | 14 |
+| **Gumball Golem** (boss, no running) | 11 | 70 | 9 | 40 |
+
+**Battles** (`src/scenes/BattleScene.ts`) run on top of the paused map:
+- **Commands:** Attack (12% critical hits), Defend (halves the next hit), Potion (+20 HP), Run (65% success; not allowed against the boss).
+- **Leveling:** every `level × 20` XP gives a level: +8 max HP, +2 ATK, full heal.
+- **Defeat:** you wake up outside the house, fully healed.
+- **Memory:** defeated monsters and opened chests stay that way for the session. The Golem's chest gives +3 potions and a full heal.
+
+Your level, HP and potions show in the HUD at the top-right.
+
+The battlers (`03`, `08`, `09` and most `b` recolors) are loaded but not yet placed; add them to `ENEMIES` and to the spawn list in `build_dungeon.py`.
+
 ## How scenes connect
 
 `src/scenes/MapScene.ts` is one generic scene, created once per map (`new MapScene('village')`, `new MapScene('cave')` in `src/main.ts`). Any Spawns object of type `door` or `exit` with a `target` property sends the player to that scene. The game remembers which house you entered, so the cave exit puts you back outside that door. Opened chests are remembered for the rest of the session.
@@ -79,4 +108,5 @@ Cave characters use RPG Maker layout (3×4 frames of 16×32). `CHARACTER_SHEETS`
 
 - The reference water's wave pattern isn't a repeating tile, so the game uses the pack's animated water instead.
 - About 4% of non-water pixels differ, mostly where tree canopies overlap in the dense forests. Trees partly hidden by other trees get approximate trunk collision.
-- Every house leads to the same cave. To give a house its own destination, set that door's `target` property (in `build_map.py` or in Tiled) to another map's scene key.
+- Door destinations are set in `DOOR_TARGETS` in `tools/build_map.py`; houses not listed are locked. Run `npm run map:build` after changing it.
+- Fantasy Battlers is a free sample pack; its README asks you to consider buying the full asset. Check its license before any commercial use.

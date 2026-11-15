@@ -218,10 +218,30 @@ def wreath(fr, light=GOLD[2], dark=GOLD[1], leaf_out=GOLD[1]):
                 fr.put(x, y - 1, leaf_out)
 
 
-def beard(fr):
+def chin_row(fr, skin):
+    """Lowest row with a run of 4+ skin pixels: the chin. Measured per frame because the head bobs
+    independently of the feet in idle/run frames (so fr.hb can be a row off)."""
+    best = None
+    for y in range(fr.t + 4, fr.b - 4):
+        run = longest = 0
+        for x in range(FW):
+            run = run + 1 if fr.px(x, y) in skin and fr.opaque(x, y) else 0
+            longest = max(longest, run)
+        if longest >= 4:
+            best = y
+    return best
+
+
+def beard(fr, skin):
+    if fr.d == 'up':
+        return
+    hb = chin_row(fr, skin)
+    if hb is None:
+        return
+    fr.hb = hb
     face = lambda x, y: fr.opaque(x, y) and not fr.edge[y, x] and fr.px(x, y) not in OUTLINE
     xs = [x for x in range(FW) if face(x, fr.hb)]
-    if not xs or fr.d == 'up':
+    if not xs:
         return
     lx, rx = min(xs), max(xs)
     cx = (lx + rx) / 2
@@ -356,7 +376,7 @@ def pearls(fr):
 def decorate(god, fr):
     spec = GODS[god]
     if god == 'zeus':
-        wreath(fr); beard(fr); sash(fr)
+        wreath(fr); beard(fr, {rgb(h) for h in SKIN[spec['base']]}); sash(fr)
     elif god == 'hermes':
         winged_helmet(fr); belt(fr, spec['belt']); winged_sandals(fr)
     elif god == 'hades':
