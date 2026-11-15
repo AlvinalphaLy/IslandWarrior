@@ -89,6 +89,9 @@ export function toast(msg: string, ms = 1800) {
  */
 export function showVictory(name: string, rewards: string[], ms: number) {
   const el = document.getElementById('victory')!;
+  el.querySelector('.title')!.textContent = 'VICTORY';
+  el.querySelector('.back')!.textContent = 'Returning to the island...';
+  (el.querySelector('.bar') as HTMLElement).style.display = '';
   el.querySelector('.sub')!.textContent = name;
   el.querySelector('ul')!.innerHTML = rewards
     .map((r) => `<li>${r.replace(/[<&]/g, (c) => (c === '<' ? '&lt;' : '&amp;'))}</li>`)
@@ -104,6 +107,20 @@ export function showVictory(name: string, rewards: string[], ms: number) {
       bar.style.width = '100%';
     }),
   );
+}
+
+/** the end of the voyage: MISSIONS COMPLETE with every trial and its prize; the game closes it on E */
+export function showMissionsComplete(name: string, lines: string[]) {
+  const el = document.getElementById('victory')!;
+  el.querySelector('.title')!.textContent = 'MISSIONS COMPLETE';
+  el.querySelector('.sub')!.textContent = name;
+  el.querySelector('ul')!.innerHTML = lines
+    .map((r) => `<li>${r.replace(/[<&]/g, (c) => (c === '<' ? '&lt;' : '&amp;'))}</li>`)
+    .join('');
+  el.querySelector('.back')!.textContent = 'Press E to continue';
+  (el.querySelector('.bar') as HTMLElement).style.display = 'none';
+  el.style.display = 'block';
+  requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('show')));
 }
 
 export function hideVictory() {

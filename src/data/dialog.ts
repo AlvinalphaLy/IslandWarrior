@@ -82,6 +82,15 @@ export const DIALOG: Record<string, DialogEntry> = {
       'Giants on the cliffs! Watch for the shadows on the water, and sail south out of the harbour mouth!',
     ],
   },
+  // the homecoming outro (MapScene.startHomecoming): Mira welcomes Odysseus home after all three trials
+  homecoming_mira: {
+    name: 'Mira',
+    lines: [
+      'Odysseus! The whole island watched the sea for your sail.',
+      "The witch, the Cyclops and the giants of Telepylus... they're telling the story in the square already.",
+      'Welcome home to Ithaca.',
+    ],
+  },
   // ---- the cave of Polyphemus (tools/build_cyclops_cave.py, src/entities/Archery.ts) ----
   // Antinous, a suitor straining at the unstrung bow; talking to him starts the string-the-bow mini-game
   suitor_intro: {

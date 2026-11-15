@@ -17,12 +17,17 @@ import {
   updateHud,
   showVictory,
   hideVictory,
+  showMissionsComplete,
 } from '../ui';
 import { Enemy } from '../entities/Enemy';
 import { Ship } from '../entities/Ship';
 import { Archery } from '../entities/Archery';
 import { Harbor } from '../entities/Harbor';
 import { Weather } from '../entities/Weather';
+import { WalkGrid } from '../entities/Pathfind';
+import type { MoveInput } from '../entities/Player';
+import { showNarration } from '../narration';
+import type { NarrationCard } from '../data/narration';
 import { CHEST_REWARDS, ENEMIES, FX_FRAME, PlayerStats, START_STATS } from '../data/enemies';
 import type { BattleData, BattleResult } from './BattleScene';
 import type { BowGameData } from './BowScene';
@@ -148,6 +153,19 @@ const CHALLENGES: Record<string, { name: string; boss: string; chest: string; de
 };
 /** how long the VICTORY banner shows before the trip back to the island (ms) */
 const VICTORY_MS = 4200;
+/** the three trials, in the order the homecoming lists them (scene key, name, prize) */
+const TRIALS = [
+  { key: 'circe', name: "Circe's Grotto", prize: 'the FaZe Odysseus skin' },
+  { key: 'cyclops', name: 'The Cave of Polyphemus', prize: "Maron's wine (+10 max HP)" },
+  { key: 'telepylus', name: 'Escape from Telepylus', prize: 'the bronze-hulled ship' },
+];
+/** the brief outro before the ship turns for home (shown as text: no voice files for these lines) */
+const HOMECOMING_CARDS: NarrationCard[] = [
+  { key: 'homecoming_1', speaker: 'Narrator', voice: 'narrator',
+    text: 'Three trials, three victories. The witch, the Cyclops and the giants of Telepylus are behind you.' },
+  { key: 'homecoming_2', speaker: 'Narrator', voice: 'narrator',
+    text: 'Your crew takes up the oars one last time. Home, to the shore of Ithaca.' },
+];
 /**
  * What each challenge gives the first time it is won (on top of its hoard, and the full heal every win gives):
  *   wine  Maron's wine, the Cyclops' undoing: max HP +WINE_HP for good
@@ -195,6 +213,16 @@ export class MapScene extends Phaser.Scene {
   private ship: Ship | null = null;
   /** Odysseus' bow: arrows, targets, gates, axes and sheep (Spawns of those types; see Archery.ts) */
   private archery: Archery | null = null;
+  /** the homecoming outro in progress (phase: intro cards, sail home, fade round an islet, walk to Mira, done) */
+  private homecoming: {
+    phase: 'intro' | 'sail' | 'fade' | 'walk' | 'done';
+    t0: number;
+    path: Phaser.Math.Vector2[];
+    mira: Npc | null;
+    moor: Phaser.Math.Vector2;
+    lastPos: Phaser.Math.Vector2;
+    stuckSince: number;
+  } | null = null;
   /** the Laestrygonian harbour escape (map property `harbor`; see Harbor.ts) */
   private harbor: Harbor | null = null;
   private shipIt: Interactable | null = null;
@@ -219,6 +247,7 @@ export class MapScene extends Phaser.Scene {
 
   init(data: MapSceneData) {
     this.arrival = data ?? {};
+    this.homecoming = null;
     this.npcs = [];
     this.campfires = [];
     this.smoke = null;
@@ -1923,7 +1952,13 @@ export class MapScene extends Phaser.Scene {
     };
     const idle = { up: false, down: false, left: false, right: false };
     const dt = Math.min(delta, 50) / 1000;
-    if (this.sailing && this.ship && !this.dialog && !this.leaving && !this.cutscene) {
+    if (this.homecoming?.phase === 'sail' && this.ship) {
+      this.sailHome(dt);
+      this.player.update(idle);
+    } else if (this.homecoming?.phase === 'walk') {
+      this.ship?.step(dt, idle);
+      this.player.update(this.walkHome());
+    } else if (this.sailing && this.ship && !this.dialog && !this.leaving && !this.cutscene) {
       if (this.ship.step(dt, input)) this.openSea();
       this.player.update(idle);
     } else {
@@ -1936,8 +1971,175 @@ export class MapScene extends Phaser.Scene {
     this.weather?.update(time);
     for (const n of this.npcs) n.update(time, delta);
     for (const e of this.enemies) e.update(time, this.player);
-    if (!this.sailing) this.checkPortals();
+    if (!this.sailing && !this.homecoming) this.checkPortals();
+    this.checkHomecoming();
     if (this.debugOn) this.drawDebug();
+  }
+
+  // ---------------------------------------------------------------- the homecoming (all three trials won)
+  /**
+   * The outro, once all three trials are won and Odysseus is at the helm in the village (it plays once):
+   *   1. dawn breaks if it is night (the villagers are out), two narrator cards close the voyage
+   *   2. the ship sails itself back to its mooring (steering like the player would; a fade if an islet blocks it)
+   *   3. Odysseus steps ashore and walks, on a route found around houses, fences and statues, to Mira
+   *   4. Mira welcomes him home, then MISSIONS COMPLETE lists the trials and their prizes; E to play on
+   */
+  private checkHomecoming() {
+    if (this.homecoming || this.scene.key !== 'village' || !this.sailing || !this.ship) return;
+    if (this.cutscene || this.dialog || this.leaving || voyagePlaybackBlocks(this)) return;
+    if (this.registry.get('homecomingDone')) return;
+    const won = (this.registry.get('challengesWon') as string[] | undefined) ?? [];
+    if (!TRIALS.every((t) => won.includes(t.key))) return;
+    this.startHomecoming();
+  }
+
+  private startHomecoming() {
+    const moor = this.layer('Spawns').find((s) => s.type === 'ship');
+    this.homecoming = { phase: 'intro', t0: this.time.now, path: [], mira: null, moor: new Phaser.Math.Vector2(moor?.x ?? 406, moor?.y ?? 292), lastPos: new Phaser.Math.Vector2(), stuckSince: 0 };
+    this.cutscene = true;
+    this.player.frozen = true;
+    if (this.weather?.enabled) {
+      this.weather.toggle();
+      setWeatherButton(false);
+      this.applyNight(false, true);
+    }
+    this.scene.pause();
+    showNarration(HOMECOMING_CARDS, {
+      audio: false,
+      onClose: () => {
+        this.scene.resume();
+        if (!this.homecoming) return;
+        this.homecoming.phase = 'sail';
+        this.homecoming.t0 = this.time.now;
+      },
+    });
+  }
+
+  /** steer the ship toward its mooring, as the player's keys would */
+  private sailHome(dt: number) {
+    const h = this.homecoming!, ship = this.ship!;
+    const dx = h.moor.x - ship.pos.x, dy = h.moor.y - ship.pos.y;
+    const arrived = Math.hypot(dx, dy) < 10;
+    if (arrived || this.time.now - h.t0 > 9000) {
+      ship.step(dt, { up: false, down: false, left: false, right: false });
+      if (arrived) return this.landHome();
+      // blocked behind an islet: the crew rows round it while the screen dims
+      h.phase = 'fade';
+      this.cameras.main.fadeOut(400, 0, 0, 0);
+      this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+        ship.pos.copy(h.moor);
+        this.cameras.main.fadeIn(400, 0, 0, 0);
+        this.landHome();
+      });
+      return;
+    }
+    ship.step(dt, { left: dx < -4, right: dx > 4, up: dy < -3, down: dy > 3 });
+  }
+
+  /** moored: step ashore, then set off on foot toward Mira */
+  private landHome() {
+    const h = this.homecoming!, ship = this.ship!;
+    const shipSpawn = this.layer('Spawns').find((s) => s.type === 'ship');
+    const spot = (shipSpawn && this.shipLandings[shipSpawn.name]) ?? this.landingSpot() ?? new Phaser.Math.Vector2(ship.pos.x, ship.pos.y - 24);
+    this.sailing = false;
+    const body = this.player.body as Phaser.Physics.Arcade.Body;
+    body.enable = true;
+    this.player.setPosition(spot.x, spot.y);
+    body.reset(spot.x, spot.y);
+    this.player.setVisible(true);
+    this.player.face('up');
+    this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
+    this.saveShip();
+    const mira = this.npcs.find((n) => n.displayName === 'Mira') ?? null;
+    h.mira = mira;
+    if (!mira) return this.homeArrived();
+    mira.talking = true;   // stop wandering, wait for him
+    mira.move(0, 0);
+    mira.setVisible(true).setAlpha(1);
+    (mira.body as Phaser.Physics.Arcade.Body).enable = true;
+    const goal = new Phaser.Math.Vector2(mira.x, mira.y + 14);
+    const solids = (this.walls.getChildren() as Phaser.GameObjects.Zone[])
+      .map((z) => z.body as Phaser.Physics.Arcade.StaticBody)
+      .filter(Boolean)
+      .map((b) => ({ x: b.x, y: b.y, width: b.width, height: b.height }));
+    const b = this.physics.world.bounds;
+    h.path = new WalkGrid(b.width, b.height, solids).path(spot, goal) ?? [];
+    if (!h.path.length) h.path = [goal];
+    h.phase = 'walk';
+    h.t0 = this.time.now;
+    h.stuckSince = this.time.now;
+    h.lastPos.set(this.player.x, this.player.y);
+    this.player.frozen = false;
+  }
+
+  /** the next step of the walk, as movement keys; arrives at Mira (or is helped along if something blocks him) */
+  private walkHome(): MoveInput {
+    const h = this.homecoming!, p = this.player;
+    const none = { up: false, down: false, left: false, right: false };
+    while (h.path.length && Phaser.Math.Distance.Between(p.x, p.y, h.path[0].x, h.path[0].y) < 3) h.path.shift();
+    if (!h.path.length) { this.homeArrived(); return none; }
+    if (Phaser.Math.Distance.Between(p.x, p.y, h.lastPos.x, h.lastPos.y) > 2) {
+      h.lastPos.set(p.x, p.y);
+      h.stuckSince = this.time.now;
+    } else if (this.time.now - h.stuckSince > 1500) {
+      // a villager or a corner in the way: hop to the next waypoint
+      const w = h.path.shift()!;
+      p.setPosition(w.x, w.y);
+      (p.body as Phaser.Physics.Arcade.Body).reset(w.x, w.y);
+      h.stuckSince = this.time.now;
+      return none;
+    }
+    const w = h.path[0], dx = w.x - p.x, dy = w.y - p.y;
+    return { left: dx < -1.5, right: dx > 1.5, up: dy < -1.5, down: dy > 1.5 };
+  }
+
+  private homeArrived() {
+    const h = this.homecoming!;
+    h.phase = 'done';
+    this.player.move(0, 0);
+    this.player.frozen = true;
+    if (h.mira) {
+      this.player.faceTowards(h.mira.x, h.mira.y);
+      h.mira.faceTowards(this.player.x, this.player.y);
+    }
+    // the dialog needs input: lift the cutscene lock while it shows, the player stays frozen
+    this.cutscene = false;
+    this.dialog = {
+      entry: dialogFor('homecoming_mira'),
+      line: 0,
+      onClose: () => this.missionsComplete(),
+    };
+    this.renderDialog();
+  }
+
+  private missionsComplete() {
+    this.cutscene = true;
+    this.player.frozen = true;
+    this.registry.set('homecomingDone', true);
+    this.cameras.main.flash(600, 255, 224, 140);
+    showMissionsComplete(
+      'Home to Ithaca',
+      TRIALS.map((t) => `✓ ${t.name}: ${t.prize}`),
+    );
+    let done = false;
+    const kb = this.input.keyboard!;
+    const close = () => {
+      if (done) return;
+      done = true;
+      for (const k of ['keydown-E', 'keydown-SPACE', 'keydown-ENTER']) kb.off(k, close);
+      this.input.off('pointerdown', close);
+      hideVictory();
+      if (this.homecoming?.mira) this.homecoming.mira.talking = false;
+      this.homecoming = null;
+      this.cutscene = false;
+      this.player.frozen = false;
+    };
+    // a moment before it can be closed, so the key that ended the dialog doesn't close it too
+    this.time.delayedCall(600, () => {
+      for (const k of ['keydown-E', 'keydown-SPACE', 'keydown-ENTER']) kb.on(k, close);
+      this.input.on('pointerdown', close);
+    });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { if (!done) { done = true; hideVictory(); } });
   }
 
   private drawDebug() {
