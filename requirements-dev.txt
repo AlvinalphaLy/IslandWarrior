@@ -1,0 +1,2 @@
+# Python formatting; application runtime dependencies are unchanged.
+black==25.11.0

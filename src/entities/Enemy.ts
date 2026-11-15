@@ -27,7 +27,14 @@ export class Enemy extends Phaser.Physics.Arcade.Image {
     body.setImmovable(true);
     body.pushable = false;
     // idle "breathing" so the static battle sprite feels alive on the map
-    scene.tweens.add({ targets: this, scaleY: 1.04, duration: 700 + Math.random() * 300, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    scene.tweens.add({
+      targets: this,
+      scaleY: 1.04,
+      duration: 700 + Math.random() * 300,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.inOut',
+    });
   }
 
   update(time: number, player: Phaser.GameObjects.Components.Transform) {

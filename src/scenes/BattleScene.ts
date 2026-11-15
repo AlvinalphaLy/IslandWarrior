@@ -1,5 +1,13 @@
 import Phaser from 'phaser';
-import { ENEMIES, EnemyDef, EnemyMove, PlayerStats, POTION_HEAL, START_STATS, XP_PER_LEVEL } from '../data/enemies';
+import {
+  ENEMIES,
+  EnemyDef,
+  EnemyMove,
+  PlayerStats,
+  POTION_HEAL,
+  START_STATS,
+  XP_PER_LEVEL,
+} from '../data/enemies';
 import { battleUi, BattleCommand, updateHud } from '../ui';
 import { createCharacterAnims } from '../entities/Character';
 
@@ -44,18 +52,34 @@ export class BattleScene extends Phaser.Scene {
     // backdrop: dark sewer gradient + arena floor
     const g = this.add.graphics();
     // vertical gradient as solid bands (gradient fills are WebGL-only; this works in Canvas too)
-    const top = Phaser.Display.Color.ValueToColor(0x1a2420), bottom = Phaser.Display.Color.ValueToColor(0x07090c);
+    const top = Phaser.Display.Color.ValueToColor(0x1a2420),
+      bottom = Phaser.Display.Color.ValueToColor(0x07090c);
     const BANDS = 18;
     for (let i = 0; i < BANDS; i++) {
       const c = Phaser.Display.Color.Interpolate.ColorWithColor(top, bottom, BANDS - 1, i);
-      g.fillStyle(Phaser.Display.Color.GetColor(c.r, c.g, c.b), 1).fillRect(0, Math.floor((i * h) / BANDS), w, Math.ceil(h / BANDS) + 1);
+      g.fillStyle(Phaser.Display.Color.GetColor(c.r, c.g, c.b), 1).fillRect(
+        0,
+        Math.floor((i * h) / BANDS),
+        w,
+        Math.ceil(h / BANDS) + 1,
+      );
     }
     g.fillStyle(0x2b3a2f, 1).fillEllipse(w / 2, 190, 300, 54);
     g.fillStyle(0x000000, 0.35).fillEllipse(w / 2, 192, 120, 18);
 
     // battlers are drawn at 2x (the largest, 96px, becomes 192px and still fits above the menu)
-    this.foe = this.add.image(w / 2, 196, this.def.sprite).setOrigin(0.5, 1).setScale(2);
-    this.tweens.add({ targets: this.foe, scaleY: 2.06, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    this.foe = this.add
+      .image(w / 2, 196, this.def.sprite)
+      .setOrigin(0.5, 1)
+      .setScale(2);
+    this.tweens.add({
+      targets: this.foe,
+      scaleY: 2.06,
+      duration: 800,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.inOut',
+    });
 
     // the player, seen from behind, bottom-left
     const skin = (this.registry.get('playerSkin') as string | undefined) ?? 'adam';
@@ -74,9 +98,16 @@ export class BattleScene extends Phaser.Scene {
     kb.on('keydown-TWO', () => this.choose('defend'));
     kb.on('keydown-THREE', () => this.choose('potion'));
     kb.on('keydown-FOUR', () => this.choose('run'));
-    kb.on('keydown-LEFT', () => this.move(-1)); kb.on('keydown-UP', () => this.move(-1)); kb.on('keydown-A', () => this.move(-1)); kb.on('keydown-W', () => this.move(-1));
-    kb.on('keydown-RIGHT', () => this.move(1)); kb.on('keydown-DOWN', () => this.move(1)); kb.on('keydown-D', () => this.move(1)); kb.on('keydown-S', () => this.move(1));
-    for (const k of ['ENTER', 'SPACE', 'E']) kb.on(`keydown-${k}`, () => this.choose(COMMANDS[this.selected]));
+    kb.on('keydown-LEFT', () => this.move(-1));
+    kb.on('keydown-UP', () => this.move(-1));
+    kb.on('keydown-A', () => this.move(-1));
+    kb.on('keydown-W', () => this.move(-1));
+    kb.on('keydown-RIGHT', () => this.move(1));
+    kb.on('keydown-DOWN', () => this.move(1));
+    kb.on('keydown-D', () => this.move(1));
+    kb.on('keydown-S', () => this.move(1));
+    for (const k of ['ENTER', 'SPACE', 'E'])
+      kb.on(`keydown-${k}`, () => this.choose(COMMANDS[this.selected]));
   }
 
   private move(d: number) {
@@ -209,20 +240,49 @@ export class BattleScene extends Phaser.Scene {
   }
 
   // ---------------------------------------------------------------- effects
-  private lunge(target: Phaser.GameObjects.Components.Transform & Phaser.GameObjects.GameObject, dy: number) {
-    this.tweens.add({ targets: target, y: (target as unknown as { y: number }).y + dy, duration: 90, yoyo: true });
+  private lunge(
+    target: Phaser.GameObjects.Components.Transform & Phaser.GameObjects.GameObject,
+    dy: number,
+  ) {
+    this.tweens.add({
+      targets: target,
+      y: (target as unknown as { y: number }).y + dy,
+      duration: 90,
+      yoyo: true,
+    });
   }
 
   private hitFx(target: Phaser.GameObjects.Image, dmg: number, crit: boolean) {
     target.setTintFill(0xffffff);
     this.time.delayedCall(90, () => target.clearTint());
     this.tweens.add({ targets: target, x: target.x + 6, duration: 40, yoyo: true, repeat: 2 });
-    this.floatText(target.x, target.y - target.displayHeight - 4, `${dmg}${crit ? '!' : ''}`, crit ? '#FFD166' : '#FFFFFF');
+    this.floatText(
+      target.x,
+      target.y - target.displayHeight - 4,
+      `${dmg}${crit ? '!' : ''}`,
+      crit ? '#FFD166' : '#FFFFFF',
+    );
   }
 
   private floatText(x: number, y: number, text: string, color: string) {
-    const t = this.add.text(x, y, text, { fontFamily: '"Pixelify Sans", monospace', fontSize: '16px', color, stroke: '#000', strokeThickness: 3 })
-      .setOrigin(0.5).setResolution(4).setDepth(100);
-    this.tweens.add({ targets: t, y: y - 22, alpha: 0, duration: 900, ease: 'Cubic.out', onComplete: () => t.destroy() });
+    const t = this.add
+      .text(x, y, text, {
+        fontFamily: '"Pixelify Sans", monospace',
+        fontSize: '16px',
+        color,
+        stroke: '#000',
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5)
+      .setResolution(4)
+      .setDepth(100);
+    this.tweens.add({
+      targets: t,
+      y: y - 22,
+      alpha: 0,
+      duration: 900,
+      ease: 'Cubic.out',
+      onComplete: () => t.destroy(),
+    });
   }
 }

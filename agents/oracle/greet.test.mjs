@@ -1,0 +1,30 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { EventEmitter } from 'node:events';
+import { bridgeReady, greetOnBridgeReady } from './greet.mjs';
+test('greet once only after bridge readiness, including already ready rooms', () => {
+  assert.equal(bridgeReady('invalid'), false);
+  assert.equal(bridgeReady('{"chert_bridge_ready":"true"}'), false);
+  const room = new EventEmitter();
+  room.metadata = '{}';
+  let count = 0;
+  greetOnBridgeReady(room, () => count++);
+  room.emit('roomMetadataChanged');
+  assert.equal(count, 0);
+  room.metadata = '{"chert_bridge_ready":true}';
+  room.emit('roomMetadataChanged');
+  room.emit('roomMetadataChanged');
+  assert.equal(count, 1);
+  greetOnBridgeReady(room, () => count++);
+  assert.equal(count, 2);
+});
+test('cancelled room never greets', () => {
+  const room = new EventEmitter();
+  let count = 0;
+  const stop = greetOnBridgeReady(room, () => count++);
+  stop();
+  room.metadata = '{"chert_bridge_ready":true}';
+  room.emit('roomMetadataChanged');
+  assert.equal(count, 0);
+  assert.equal(room.listenerCount('roomMetadataChanged'), 0);
+});

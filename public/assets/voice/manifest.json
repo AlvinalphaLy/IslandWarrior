@@ -1,0 +1,205 @@
+{
+  "intro_1": {
+    "hash": "55a6f3a351a8a9dc5eb7dffbb7209bfcff48d3c819fdbdd02fb7dab876d976e9",
+    "file": "intro_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "intro_2": {
+    "hash": "866e4a98e5eb851eb270dadc752e3c8bae82701bb6d27aa2b30dbc8ae8d9e0b8",
+    "file": "intro_2.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "telemachus_1": {
+    "hash": "d56bb4e9284c10398cf4a8da07eb7438bbf675ebd6ebe43f818883ca7dd1df14",
+    "file": "telemachus_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "telemachus_2": {
+    "hash": "77447e8af9af937133d7d4d533ab7bf9fb823694206521788c2d3d62bb46bb06",
+    "file": "telemachus_2.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "10NkTYmU7tSz3Kkl3Lex"
+  },
+  "spartan_1": {
+    "hash": "29eadbbc11d487177b01e87606b4a150d600e9b46dea4c16725032d1081d9314",
+    "file": "spartan_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "achilles_1": {
+    "hash": "6f0ccf6ea1032d144b7fabe945f5474b4d0b48dcb284764971982ca567b2cde3",
+    "file": "achilles_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "achilles_2": {
+    "hash": "bb217e6391250c9da08063877bcd655d9441ccd2bfc746723230f2d45899388a",
+    "file": "achilles_2.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "7QN34D2r3hCNwbOYIeK0"
+  },
+  "oracle_1": {
+    "hash": "b354defc55562dea30530e2f7514d562b380df298e417b2476a7ddb575e209b9",
+    "file": "oracle_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "sail_1": {
+    "hash": "8a28c1a1be714b6e48df07d946b66d5f7d183b6b6009ff03475f488b9c9a48c8",
+    "file": "sail_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "victory_1": {
+    "hash": "f39891ea3c52dd46e3830b41ae0f557cddc04ef045b37e953068f5944ea7f9bd",
+    "file": "victory_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "defeat_1": {
+    "hash": "86af76a601750c561acf0e5a43c9bd6cd0cef16af4273353fbb8c3ad43fe3d5b",
+    "file": "defeat_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "unlock_1": {
+    "hash": "02676af845c198d965a506d4cb53c08fcaee0e681aad09cee8393690c6507fce",
+    "file": "unlock_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "kalos_1": {
+    "hash": "7088087f56acf168ae076a9ed673b010c14124819b0bc081b5858ce8a7089b8f",
+    "file": "kalos_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "gOupLcAkjEnguROwi4oS"
+  },
+  "journey_opening_1": {
+    "hash": "7bd5c734ec1a2736378a0ed0a125ebb8393c3f31255fa3e70c90a5cf32bd8f0a",
+    "file": "journey_opening_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "journey_opening_2": {
+    "hash": "8bf6ab50d69e3103b8e8bf1d76125c1b67db3c1ee4dd113700fed2acd1a1f9c5",
+    "file": "journey_opening_2.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "journey_shore_1": {
+    "hash": "df129391f940547b112878b9c58740bc1fe2136ccbb1ee7aa914b4a0f8314c33",
+    "file": "journey_shore_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "journey_shore_2": {
+    "hash": "880c99124e8ccfc2c0521c717fdee73367c53ca54c43c88de992fb876ab9dc26",
+    "file": "journey_shore_2.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "journey_lotus_1": {
+    "hash": "dd75ded6b2567489e5f51653eddc64f6a03d7dd61f178e806cad053b89be4f37",
+    "file": "journey_lotus_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "journey_lotus_2": {
+    "hash": "bc93c1290b9a6a4e1638f3db8d85f54e88bcc4a77875b5c1228d0a6e53a1fa33",
+    "file": "journey_lotus_2.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "journey_circe_1": {
+    "hash": "c3d3d36bea191afcacb906369028875ea90502969662d256a5d4930e9e058fd9",
+    "file": "journey_circe_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "journey_circe_2": {
+    "hash": "261d78eb4fa418a5b7988d04ce0db48fe53fa67276844565b2711585ed7e93b5",
+    "file": "journey_circe_2.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "journey_underworld_1": {
+    "hash": "c3327d2149dccf1f0d5b013f97c2a0d60bc7a652a52f8b31ffba1d16970a271e",
+    "file": "journey_underworld_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "journey_underworld_2": {
+    "hash": "980548035de4b0d4b20036730b239f8d9cb577817cfcca6248d71484857bf954",
+    "file": "journey_underworld_2.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "journey_cyclops_1": {
+    "hash": "9eac58dae7d2b5b866cfa7434c69090ecdb4d0490290cd5bb980b989fe5df192",
+    "file": "journey_cyclops_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "journey_cyclops_2": {
+    "hash": "69d67a81df94972e3dcb2ef46866694dd834b8471c06e1a93b1151fac705fd2b",
+    "file": "journey_cyclops_2.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "journey_sirens_1": {
+    "hash": "495e2ffedd4f4ecd1c137ec0077408dba3f5c21c9f7578f074388b37ee8cdafe",
+    "file": "journey_sirens_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "journey_sirens_2": {
+    "hash": "328f7d371cc93a482f076fd3c28b10fe42ff775a95891952c18cfac72d7f4203",
+    "file": "journey_sirens_2.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "journey_home_1": {
+    "hash": "3684d0038da9ef233f38be075097a3a33795d3a06652cc9fd58a2d28ecfde36f",
+    "file": "journey_home_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "journey_home_2": {
+    "hash": "54a839381c665ef93e7c6c1975155548b77b364f41def3676b5812bbf02724db",
+    "file": "journey_home_2.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  }
+}

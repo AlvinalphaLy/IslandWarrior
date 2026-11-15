@@ -13,3 +13,11 @@ cache
 .DS_Store
 Thumbs.db
 *.log
+
+# Integration credentials and nested projects
+.env*
+!.env.example
+**/node_modules/
+
+# Interrupted narration audio generation
+public/assets/voice/*.partial

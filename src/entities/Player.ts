@@ -33,7 +33,12 @@ export class Player extends Character {
 
   /** Point just in front of the player, used to pick the interaction target. */
   get probe() {
-    const off: Record<Dir, [number, number]> = { down: [0, 8], up: [0, -10], left: [-10, -3], right: [10, -3] };
+    const off: Record<Dir, [number, number]> = {
+      down: [0, 8],
+      up: [0, -10],
+      left: [-10, -3],
+      right: [10, -3],
+    };
     const [ox, oy] = off[this.facing];
     const f = this.feet;
     return new Phaser.Math.Vector2(f.x + ox, f.y + oy);

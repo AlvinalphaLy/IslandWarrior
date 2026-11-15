@@ -13,7 +13,15 @@ export class Npc extends Character {
   private stuckTime = 0;
   speed = 22;
 
-  constructor(scene: Phaser.Scene, x: number, y: number, sheet: string, name: string, dialogKey: string, radius: number) {
+  constructor(
+    scene: Phaser.Scene,
+    x: number,
+    y: number,
+    sheet: string,
+    name: string,
+    dialogKey: string,
+    radius: number,
+  ) {
     super(scene, x, y, sheet);
     this.home = new Phaser.Math.Vector2(x, y);
     this.radius = radius;
@@ -37,10 +45,14 @@ export class Npc extends Character {
       }
       const a = Math.random() * Math.PI * 2;
       const r = Math.random() * this.radius;
-      this.target = new Phaser.Math.Vector2(this.home.x + Math.cos(a) * r, this.home.y + Math.sin(a) * r);
+      this.target = new Phaser.Math.Vector2(
+        this.home.x + Math.cos(a) * r,
+        this.home.y + Math.sin(a) * r,
+      );
       this.stuckTime = 0;
     }
-    const dx = this.target.x - this.x, dy = this.target.y - this.y;
+    const dx = this.target.x - this.x,
+      dy = this.target.y - this.y;
     const dist = Math.hypot(dx, dy);
     const body = this.body as Phaser.Physics.Arcade.Body;
     if (dist < 2) return this.arrive(time);

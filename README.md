@@ -80,3 +80,24 @@ Cave characters use RPG Maker layout (3×4 frames of 16×32). `CHARACTER_SHEETS`
 - The reference water's wave pattern isn't a repeating tile, so the game uses the pack's animated water instead.
 - About 4% of non-water pixels differ, mostly where tree canopies overlap in the dense forests. Trees partly hidden by other trees get approximate trunk collision.
 - Every house leads to the same cave. To give a house its own destination, set that door's `target` property (in `build_map.py` or in Tiled) to another map's scene key.
+
+## Chert, Tiger Data and Vultr integrations
+
+The separate Oracle agent, local API, event harness and deployment configuration are documented in [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md). Gameplay integration is exposed through explicit hooks for the gameplay owner; existing scenes and controls are unchanged.
+
+For the navy-and-bronze voiced story popup, open `/narration-preview.html` while Vite is running. See [docs/NARRATION.md](docs/NARRATION.md) for ElevenLabs generation and scene hooks. Fixed clips play locally; provider keys stay out of the browser.
+
+## Homecoming story
+
+In the game, select **Begin your Odyssey** to start the voiced, seven-chapter journey. Follow the objective widget and use its journal to replay completed chapters. See [docs/STORY.md](docs/STORY.md) for the route and integration details.
+
+## Code formatting
+
+Use two-space indentation for TypeScript, JavaScript, HTML, CSS and YAML, and four spaces for Python. Important methods include comments explaining intent and lifecycle behavior.
+
+```sh
+npm run format
+npm run format:check
+```
+
+Python scripts use Black (`requirements-dev.txt`): `python3 -m black tools/` and `python3 -m black --check tools/`. Formatter configuration excludes generated maps, assets, lockfiles and private environment files. `.editorconfig` carries the indentation settings into compatible editors.

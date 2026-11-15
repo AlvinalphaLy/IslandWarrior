@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>IslandWarrior · Narration preview</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #10192a;
+        color: #fff0d0;
+        font-family: 'Pixelify Sans', monospace;
+        min-height: 100dvh;
+      }
+      .village {
+        position: fixed;
+        inset: 0;
+        background:
+          linear-gradient(#101b3044, #10132455),
+          url('/assets/portraits/preview-village.png') center/cover;
+        image-rendering: pixelated;
+      }
+      .preview-header {
+        position: relative;
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 28px 24px;
+        background: #10182be8;
+        border-bottom: 2px solid #ba894c;
+      }
+      h1 {
+        font-size: 27px;
+        margin: 0 0 8px;
+        color: #e9b575;
+      }
+      p {
+        line-height: 1.5;
+        margin: 8px 0;
+      }
+      button {
+        font: inherit;
+        background: #18283c;
+        color: #fff0d0;
+        border: 1px solid #a97b44;
+        padding: 10px 14px;
+        margin: 6px 8px 0 0;
+        cursor: pointer;
+        min-height: 44px;
+      }
+      button:hover,
+      button:focus-visible {
+        background: #314253;
+        outline: 2px solid #56d9ca;
+      }
+      a {
+        color: #72dacb;
+      }
+      .preview-header small {
+        display: block;
+        color: #c4c8ce;
+        margin-top: 14px;
+      }
+      @media (max-width: 600px) {
+        .preview-header {
+          padding: 16px;
+        }
+        h1 {
+          font-size: 22px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="village" aria-hidden="true"></div>
+    <header class="preview-header">
+      <h1>FaZe Odyssey · Story voices</h1>
+      <p>Select a story beat to preview the narration card.</p>
+      <nav id="preview-controls" aria-label="Preview story beats"></nav>
+      <small
+        >E / Space reveals the line, then continues. Escape closes. Captions work without audio.<br />Voice
+        clips appear after ElevenLabs generation. <a href="./">Back to game</a></small
+      >
+    </header>
+    <script type="module" src="/src/narration/preview.ts"></script>
+  </body>
+</html>

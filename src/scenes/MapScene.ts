@@ -1,3 +1,4 @@
+import { mountStory, handleStoryEvent, storyIsOpen } from '../story';
 import Phaser from 'phaser';
 import { Player } from '../entities/Player';
 import { Npc } from '../entities/Npc';
@@ -13,21 +14,59 @@ const FLIP_V = 0x40000000;
 const FLIP_D = 0x20000000;
 const GID_MASK = 0x1fffffff;
 
-interface TiledProp { name: string; value: unknown }
-interface TiledObject {
-  id: number; name: string; type: string; x: number; y: number; width: number; height: number;
-  rotation: number; gid?: number; point?: boolean; properties?: TiledProp[];
+interface TiledProp {
+  name: string;
+  value: unknown;
 }
-interface TiledTileset { firstgid: number; name: string; tilecount: number }
-interface TiledLayer { name: string; type: string; objects?: TiledObject[] }
-interface TiledMap { tilesets: TiledTileset[]; layers: TiledLayer[]; tilewidth: number; properties?: TiledProp[] }
+interface TiledObject {
+  id: number;
+  name: string;
+  type: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  gid?: number;
+  point?: boolean;
+  properties?: TiledProp[];
+}
+interface TiledTileset {
+  firstgid: number;
+  name: string;
+  tilecount: number;
+}
+interface TiledLayer {
+  name: string;
+  type: string;
+  objects?: TiledObject[];
+}
+interface TiledMap {
+  tilesets: TiledTileset[];
+  layers: TiledLayer[];
+  tilewidth: number;
+  properties?: TiledProp[];
+}
 
 const prop = <T>(o: { properties?: TiledProp[] }, key: string, def: T): T =>
   (o.properties?.find((p) => p.name === key)?.value as T) ?? def;
 
-interface Interactable { kind: 'npc' | 'sign' | 'chest'; rect: Phaser.Geom.Rectangle; npc?: Npc; dialog: string; id: string }
+interface Interactable {
+  kind: 'npc' | 'sign' | 'chest';
+  rect: Phaser.Geom.Rectangle;
+  npc?: Npc;
+  dialog: string;
+  id: string;
+}
 /** A door (village houses) or exit (cave ladder): walking up into it moves to `target`. */
-interface Portal { id: string; kind: 'door' | 'exit'; target: string; rect: Phaser.Geom.Rectangle; tile: Phaser.Math.Vector2; busy: boolean }
+interface Portal {
+  id: string;
+  kind: 'door' | 'exit';
+  target: string;
+  rect: Phaser.Geom.Rectangle;
+  tile: Phaser.Math.Vector2;
+  busy: boolean;
+}
 
 export interface MapSceneData {
   /** id of the portal the player arrived through on the previous map (e.g. house_3) */
@@ -83,7 +122,9 @@ export class MapScene extends Phaser.Scene {
     this.raw = this.cache.tilemap.get(this.scene.key).data as TiledMap;
     const map = this.make.tilemap({ key: this.scene.key });
     const tilesets = this.raw.tilesets.map((t) => map.addTilesetImage(t.name, t.name)!);
-    ['Ground0', 'Ground1', 'Ground2'].forEach((name, i) => map.createLayer(name, tilesets, 0, 0)?.setDepth(-1000 + i));
+    ['Ground0', 'Ground1', 'Ground2'].forEach((name, i) =>
+      map.createLayer(name, tilesets, 0, 0)?.setDepth(-1000 + i),
+    );
     this.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
 
     this.setupTileAnimations(map);
@@ -97,15 +138,23 @@ export class MapScene extends Phaser.Scene {
     cam.setRoundPixels(true);
     cam.fadeIn(300, 0, 0, 0);
     if (prop(this.raw, 'dark', false)) {
-      this.vignette = this.add.image(0, 0, 'vignette').setOrigin(0).setScrollFactor(0).setDepth(9000).setDisplaySize(cam.width, cam.height);
+      this.vignette = this.add
+        .image(0, 0, 'vignette')
+        .setOrigin(0)
+        .setScrollFactor(0)
+        .setDepth(9000)
+        .setDisplaySize(cam.width, cam.height);
     }
 
     this.debugGfx = this.add.graphics().setDepth(10000).setVisible(false);
     this.setupInput();
+    mountStory(this);
     showDialog(null);
     updateHud(this.stats);
     this.events.on('battle-end', this.onBattleEnd, this);
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.events.off('battle-end', this.onBattleEnd, this));
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () =>
+      this.events.off('battle-end', this.onBattleEnd, this),
+    );
   }
 
   private get stats(): PlayerStats {
@@ -136,10 +185,12 @@ export class MapScene extends Phaser.Scene {
     if (!this.animatedTiles.length) return;
     let frame = 0;
     this.time.addEvent({
-      delay: 140, loop: true,
+      delay: 140,
+      loop: true,
       callback: () => {
         frame++;
-        for (const a of this.animatedTiles) for (const t of a.tiles) t.index = a.first + (frame % a.count);
+        for (const a of this.animatedTiles)
+          for (const t of a.tiles) t.index = a.first + (frame % a.count);
       },
     });
   }
@@ -151,12 +202,19 @@ export class MapScene extends Phaser.Scene {
       if (!o.gid) continue;
       const { key, frame } = this.tilesetFor(o.gid & GID_MASK);
       const a = Phaser.Math.DegToRad(o.rotation || 0);
-      const hx = ts / 2, hy = -ts / 2;
-      const img = this.add.sprite(o.x + hx * Math.cos(a) - hy * Math.sin(a), o.y + hx * Math.sin(a) + hy * Math.cos(a), `${key}_ss`, frame);
+      const hx = ts / 2,
+        hy = -ts / 2;
+      const img = this.add.sprite(
+        o.x + hx * Math.cos(a) - hy * Math.sin(a),
+        o.y + hx * Math.sin(a) + hy * Math.cos(a),
+        `${key}_ss`,
+        frame,
+      );
       img.setAngle(o.rotation || 0);
       img.setFlip(!!(o.gid & FLIP_H), !!(o.gid & FLIP_V));
       if (o.gid & FLIP_D) img.setAngle(img.angle + 90).setFlipX(!img.flipX);
-      const sortY = prop(o, 'sortY', -1), z = prop(o, 'z', 0);
+      const sortY = prop(o, 'sortY', -1),
+        z = prop(o, 'z', 0);
       img.setDepth(sortY < 0 ? -500 + z * 1e-4 : sortY + z * 1e-5);
       if (key === 'campfire') img.play('campfire');
     }
@@ -176,21 +234,42 @@ export class MapScene extends Phaser.Scene {
       if (s.type === 'player') {
         start ??= { x: s.x, y: s.y, sprite: prop(s, 'sprite', 'adam'), face: 'down' };
       } else if (s.type === 'npc') {
-        const npc = new Npc(this, s.x, s.y, prop(s, 'sprite', 'amelia'), s.name, prop(s, 'dialog', ''), prop(s, 'wander', 0));
+        const npc = new Npc(
+          this,
+          s.x,
+          s.y,
+          prop(s, 'sprite', 'amelia'),
+          s.name,
+          prop(s, 'dialog', ''),
+          prop(s, 'wander', 0),
+        );
         this.npcs.push(npc);
-        this.interactables.push({ kind: 'npc', npc, rect: new Phaser.Geom.Rectangle(), dialog: npc.dialogKey, id: s.name });
+        this.interactables.push({
+          kind: 'npc',
+          npc,
+          rect: new Phaser.Geom.Rectangle(),
+          dialog: npc.dialogKey,
+          id: s.name,
+        });
       } else if (s.type === 'enemy') {
         const id = prop(s, 'enemy', '');
         const defeated = (this.registry.get('defeated') as string[] | undefined) ?? [];
-        if (ENEMIES[id] && !defeated.includes(`${this.scene.key}:${s.name}`)) this.enemies.push(new Enemy(this, s.x, s.y, id, s.name));
+        if (ENEMIES[id] && !defeated.includes(`${this.scene.key}:${s.name}`))
+          this.enemies.push(new Enemy(this, s.x, s.y, id, s.name));
       } else if (s.type === 'sign' || s.type === 'chest') {
         this.interactables.push({ kind: s.type, rect, dialog: prop(s, 'dialog', ''), id: s.name });
       } else if (s.type === 'door' || s.type === 'exit') {
         const id = s.type === 'door' ? prop(s, 'house', s.name) : s.name;
         const p: Portal = {
-          id, kind: s.type, target: prop(s, 'target', ''), busy: false,
+          id,
+          kind: s.type,
+          target: prop(s, 'target', ''),
+          busy: false,
           tile: new Phaser.Math.Vector2(s.x, s.y),
-          rect: s.type === 'door' ? new Phaser.Geom.Rectangle(s.x + 3, s.y + s.height - 6, s.width - 6, 10) : rect,
+          rect:
+            s.type === 'door'
+              ? new Phaser.Geom.Rectangle(s.x + 3, s.y + s.height - 6, s.width - 6, 10)
+              : rect,
         };
         this.portals.push(p);
       }
@@ -198,7 +277,8 @@ export class MapScene extends Phaser.Scene {
     // arriving back through a door: stand just outside it, facing away from the house
     const via = this.portals.find((p) => p.kind === 'door' && p.id === this.arrival.from);
     // a skin chosen with C carries over between maps
-    const sprite = (this.registry.get('playerSkin') as string | undefined) ?? start?.sprite ?? 'adam';
+    const sprite =
+      (this.registry.get('playerSkin') as string | undefined) ?? start?.sprite ?? 'adam';
     if (via) start = { x: via.rect.centerX, y: via.rect.bottom + 6, sprite, face: 'down' };
     this.player = new Player(this, start!.x, start!.y, sprite);
     this.player.face(start!.face);
@@ -213,7 +293,14 @@ export class MapScene extends Phaser.Scene {
 
   // ---------------------------------------------------------------- battles
   private startBattle(enemy: Enemy) {
-    if (this.inBattle || this.leaving || this.time.now < this.safeUntil || this.time.now < enemy.stunnedUntil) return;
+    if (
+      storyIsOpen() ||
+      this.inBattle ||
+      this.leaving ||
+      this.time.now < this.safeUntil ||
+      this.time.now < enemy.stunnedUntil
+    )
+      return;
     this.inBattle = true;
     this.battleEnemy = enemy;
     this.player.move(0, 0);
@@ -237,6 +324,8 @@ export class MapScene extends Phaser.Scene {
       this.enemies = this.enemies.filter((e) => e !== enemy);
       enemy.destroy();
       if (enemy.def.boss) toast(`${enemy.def.name} defeated! The treasure is yours.`, 2600);
+      // Progress only after a real victory; running away and defeat never satisfy the guardian chapter.
+      handleStoryEvent(this, { type: 'victory', key: enemy.enemyId, map: this.scene.key });
     } else if (result === 'run' && enemy) {
       enemy.stunnedUntil = this.time.now + 2500;
       this.safeUntil = this.time.now + 1500;
@@ -244,20 +333,28 @@ export class MapScene extends Phaser.Scene {
       // wake up outside the house you entered
       this.leaving = true;
       toast('You wake up outside, fully healed.', 2600);
-      this.scene.start('village', { from: (this.registry.get('lastHouse') as string | undefined) ?? '' } as MapSceneData);
+      this.scene.start('village', {
+        from: (this.registry.get('lastHouse') as string | undefined) ?? '',
+      } as MapSceneData);
     }
   }
 
   // ---------------------------------------------------------------- input / dialog
   private setupInput() {
     const kb = this.input.keyboard!;
-    this.keys = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT') as Record<string, Phaser.Input.Keyboard.Key>;
+    this.keys = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT') as Record<
+      string,
+      Phaser.Input.Keyboard.Key
+    >;
     kb.addCapture('F1');
     // plugin-level listeners are removed automatically when the scene shuts down
     for (const k of ['E', 'SPACE', 'ENTER']) kb.on(`keydown-${k}`, () => this.interact());
     kb.on('keydown-M', () => this.toggleOverview());
     kb.on('keydown-C', () => this.cycleSkin());
-    kb.on('keydown-F1', () => { this.debugOn = !this.debugOn; this.debugGfx.setVisible(this.debugOn); });
+    kb.on('keydown-F1', () => {
+      this.debugOn = !this.debugOn;
+      this.debugGfx.setVisible(this.debugOn);
+    });
     setActionHandler(() => this.interact());
   }
 
@@ -287,17 +384,31 @@ export class MapScene extends Phaser.Scene {
   }
 
   private interact() {
-    if (this.leaving) return;
+    if (this.leaving || storyIsOpen()) return;
     if (this.dialog) return this.advanceDialog();
     const p = this.player.probe;
     let best: Interactable | null = null;
     let bestD = 14;
     for (const it of this.interactables) {
       if (it.npc) it.rect.setTo(it.npc.x - 8, it.npc.y - 16, 16, 16);
-      const d = Phaser.Math.Distance.Between(p.x, p.y, Phaser.Math.Clamp(p.x, it.rect.left, it.rect.right), Phaser.Math.Clamp(p.y, it.rect.top, it.rect.bottom));
-      if (d < bestD) { bestD = d; best = it; }
+      const d = Phaser.Math.Distance.Between(
+        p.x,
+        p.y,
+        Phaser.Math.Clamp(p.x, it.rect.left, it.rect.right),
+        Phaser.Math.Clamp(p.y, it.rect.top, it.rect.bottom),
+      );
+      if (d < bestD) {
+        bestD = d;
+        best = it;
+      }
     }
     if (!best) return;
+    // Story objectives use the voiced overlay; ordinary interactions retain their existing behavior.
+    if (
+      best.kind === 'npc' &&
+      handleStoryEvent(this, { type: 'talk', key: best.dialog, map: this.scene.key })
+    )
+      return;
     if (best.npc) {
       best.npc.talking = true;
       best.npc.faceTowards(this.player.x, this.player.y);
@@ -315,7 +426,13 @@ export class MapScene extends Phaser.Scene {
           if (reward.heal) st.hp = st.maxHp;
           this.registry.set('stats', st);
           updateHud(st);
-          entry = { name: entry.name, lines: [...entry.lines, `+${reward.potions ?? 0} potions${reward.heal ? ', HP fully restored' : ''}.`] };
+          entry = {
+            name: entry.name,
+            lines: [
+              ...entry.lines,
+              `+${reward.potions ?? 0} potions${reward.heal ? ', HP fully restored' : ''}.`,
+            ],
+          };
         }
       }
     }
@@ -348,15 +465,19 @@ export class MapScene extends Phaser.Scene {
       const inside = Phaser.Geom.Rectangle.Contains(p.rect, f.x, f.y);
       if (!p.target) {
         // locked: say so once per approach
-        if (inside && !p.busy && this.player.facing === 'up') { p.busy = true; toast('The door is locked.'); }
-        else if (!inside) p.busy = false;
+        if (inside && !p.busy && this.player.facing === 'up') {
+          p.busy = true;
+          toast('The door is locked.');
+        } else if (!inside) p.busy = false;
         continue;
       }
       if (p.busy || this.player.facing !== 'up' || !inside) continue;
       p.busy = true;
       this.player.frozen = true;
       if (p.kind === 'door') {
-        const spr = this.add.sprite(p.tile.x + 8, p.tile.y + 8, 'door_ss', 0).setDepth(p.rect.y - 1);
+        const spr = this.add
+          .sprite(p.tile.x + 8, p.tile.y + 8, 'door_ss', 0)
+          .setDepth(p.rect.y - 1);
         spr.play('door-open');
         spr.once('animationcomplete', () => this.travel(p));
       } else {
@@ -374,7 +495,9 @@ export class MapScene extends Phaser.Scene {
     else from = (this.registry.get('lastHouse') as string | undefined) ?? '';
     if (!p.target || !this.scene.get(p.target)) {
       toast('The door is locked.');
-      this.leaving = false; p.busy = false; this.player.frozen = false;
+      this.leaving = false;
+      p.busy = false;
+      this.player.frozen = false;
       return;
     }
     this.cameras.main.fadeOut(300, 0, 0, 0);
@@ -400,8 +523,16 @@ export class MapScene extends Phaser.Scene {
 
   private drawDebug() {
     const g = this.debugGfx.clear();
-    const colors: Record<string, number> = { water: 0x2266ff, pit: 0x2266ff, tree: 0xff3333, house: 0xff9900, wall: 0xff00cc, solid: 0xffee00 };
-    for (const r of this.layer('Collision')) g.fillStyle(colors[r.type] ?? 0xffffff, 0.35).fillRect(r.x, r.y, r.width, r.height);
+    const colors: Record<string, number> = {
+      water: 0x2266ff,
+      pit: 0x2266ff,
+      tree: 0xff3333,
+      house: 0xff9900,
+      wall: 0xff00cc,
+      solid: 0xffee00,
+    };
+    for (const r of this.layer('Collision'))
+      g.fillStyle(colors[r.type] ?? 0xffffff, 0.35).fillRect(r.x, r.y, r.width, r.height);
     g.lineStyle(1, 0x00ff00, 1);
     for (const p of this.portals) g.strokeRectShape(p.rect);
     for (const it of this.interactables) if (!it.npc) g.strokeRectShape(it.rect);

@@ -12,24 +12,36 @@ export function setActionHandler(fn: () => void) {
 export function initUi() {
   document.querySelectorAll<HTMLButtonElement>('#dpad button').forEach((b) => {
     const d = b.dataset.d as keyof MoveInput;
-    const set = (v: boolean) => (e: Event) => { e.preventDefault(); touch[d] = v; };
+    const set = (v: boolean) => (e: Event) => {
+      e.preventDefault();
+      touch[d] = v;
+    };
     b.addEventListener('pointerdown', set(true));
     b.addEventListener('pointerup', set(false));
     b.addEventListener('pointerleave', set(false));
     b.addEventListener('pointercancel', set(false));
   });
-  document.getElementById('act')?.addEventListener('pointerdown', (e) => { e.preventDefault(); actionHandler(); });
+  document.getElementById('act')?.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    actionHandler();
+  });
   const dlg = document.getElementById('dialog')!;
   dlg.style.pointerEvents = 'auto';
   dlg.addEventListener('pointerdown', () => actionHandler());
   document.querySelectorAll<HTMLButtonElement>('#battle button').forEach((b) => {
-    b.addEventListener('pointerdown', (e) => { e.preventDefault(); battleHandler(b.dataset.c as BattleCommand); });
+    b.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      battleHandler(b.dataset.c as BattleCommand);
+    });
   });
 }
 
 export function showDialog(name: string | null, text = '') {
   const el = document.getElementById('dialog')!;
-  if (name === null) { el.style.display = 'none'; return; }
+  if (name === null) {
+    el.style.display = 'none';
+    return;
+  }
   el.style.display = 'block';
   el.querySelector('.name')!.textContent = name;
   el.querySelector('.text')!.textContent = text;
@@ -47,7 +59,8 @@ export function toast(msg: string, ms = 1800) {
 // ---------------------------------------------------------------- HUD (level / HP / potions)
 export function updateHud(s: PlayerStats) {
   const el = document.getElementById('hud')!;
-  el.innerHTML = `<span>Lv ${s.level}</span><span>HP ${s.hp}/${s.maxHp}</span>` +
+  el.innerHTML =
+    `<span>Lv ${s.level}</span><span>HP ${s.hp}/${s.maxHp}</span>` +
     `<span class="hpbar"><i style="width:${Math.round((100 * s.hp) / s.maxHp)}%"></i></span><span>Potions ${s.potions}</span>`;
 }
 
@@ -55,7 +68,8 @@ export function updateHud(s: PlayerStats) {
 export type BattleCommand = 'attack' | 'defend' | 'potion' | 'run';
 let battleHandler: (c: BattleCommand) => void = () => {};
 
-const q = <T extends Element = HTMLElement>(sel: string) => document.querySelector<T>(`#battle ${sel}`)!;
+const q = <T extends Element = HTMLElement>(sel: string) =>
+  document.querySelector<T>(`#battle ${sel}`)!;
 
 export const battleUi = {
   show(foeName: string, onCommand: (c: BattleCommand) => void) {
@@ -81,9 +95,13 @@ export const battleUi = {
     q('.log').textContent = text;
   },
   enable(on: boolean) {
-    document.querySelectorAll<HTMLButtonElement>('#battle button').forEach((b) => (b.disabled = !on));
+    document
+      .querySelectorAll<HTMLButtonElement>('#battle button')
+      .forEach((b) => (b.disabled = !on));
   },
   select(c: BattleCommand) {
-    document.querySelectorAll<HTMLButtonElement>('#battle button').forEach((b) => b.classList.toggle('sel', b.dataset.c === c));
+    document
+      .querySelectorAll<HTMLButtonElement>('#battle button')
+      .forEach((b) => b.classList.toggle('sel', b.dataset.c === c));
   },
 };
