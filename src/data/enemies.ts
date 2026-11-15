@@ -114,4 +114,5 @@ export const CHEST_REWARDS: Record<string, { potions?: number; heal?: boolean }>
   chest_1: { potions: 1 },
   chest_golem: { potions: 3, heal: true },
   chest_circe: { potions: 2, heal: true },
+  chest_cyclops: { potions: 2, heal: true },
 };

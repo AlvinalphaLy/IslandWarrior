@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { CHARACTER_SHEETS, FRAME_H, FRAME_W } from '../entities/Character';
 import { BATTLER_FILES, GREEK_SHEETS, START_STATS } from '../data/enemies';
 
-export const MAPS = ['village', 'cave', 'dungeon', 'circe'];
+export const MAPS = ['village', 'cave', 'dungeon', 'circe', 'cyclops'];
 export const TILESETS = ['village', 'water', 'campfire', 'door', 'auto', 'cave', 'sewer', 'patch', 'viking', 'grotto', 'shore'];
 
 /** Loads every map, tileset and character once, then starts the village. */
@@ -34,6 +34,10 @@ export class PreloadScene extends Phaser.Scene {
     this.load.spritesheet('cyclops_head', 'assets/props/cyclops_head.png', { frameWidth: 32, frameHeight: 34 });
     // the amphora of Maron's wine beside it: pour it into the mouth to wake the head (tools/make_amphora.py)
     this.load.spritesheet('amphora', 'assets/props/amphora.png', { frameWidth: 14, frameHeight: 19 });
+    // the archery puzzle in the Cyclops cave (tools/make_archery_props.py, src/entities/Archery.ts)
+    for (const k of ['arrow', 'bow', 'axe', 'boulder', 'bridge']) this.load.image(k, `assets/props/${k}.png`);
+    this.load.spritesheet('target', 'assets/props/target.png', { frameWidth: 14, frameHeight: 22 });
+    this.load.spritesheet('sheep', 'assets/props/sheep.png', { frameWidth: 18, frameHeight: 15 });
     // Circe's statue on the islet (tools/make_witch_statue.py): 2 frames of 16x32, glowing eyes
     // the treasure chest that lures you to Circe's islet (tools/make_treasure_chest.py): closed / open, 24x20
     this.load.spritesheet('treasure_chest', 'assets/props/treasure_chest.png', { frameWidth: 24, frameHeight: 20 });

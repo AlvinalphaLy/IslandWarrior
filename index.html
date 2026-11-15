@@ -39,7 +39,10 @@
     #dpad [data-d=up] { left: 50px; top: 0; } #dpad [data-d=down] { left: 50px; top: 100px; }
     #dpad [data-d=left] { left: 0; top: 50px; } #dpad [data-d=right] { left: 100px; top: 50px; }
     #act { right: 24px; bottom: 50px; width: 64px; height: 64px; border-radius: 50%; display: none; pointer-events: auto; font-family: inherit; }
-    @media (pointer: coarse) { #dpad, #act { display: block; } #hint { display: none; } }
+    #bow { position: absolute; right: 100px; bottom: 24px; width: 52px; height: 52px; border: 0; border-radius: 50%; background: #fff3;
+      color: #fff; font: 600 15px inherit; font-family: inherit; touch-action: none; user-select: none; -webkit-user-select: none;
+      display: none; pointer-events: auto; }
+    @media (pointer: coarse) { #dpad, #act, #bow { display: block; } #hint { display: none; } }
 
     #hud {
       position: absolute; right: 12px; top: 10px; background: #0009; padding: 6px 10px; border-radius: 4px;
@@ -72,7 +75,7 @@
 <body>
   <div id="game"></div>
   <div id="ui">
-    <div id="hint">WASD / Arrows: move &nbsp;·&nbsp; E / Space: talk<br />C: change skin &nbsp;·&nbsp; M: map overview &nbsp;·&nbsp; F1: collision debug</div>
+    <div id="hint">WASD / Arrows: move &nbsp;·&nbsp; E / Space: talk<br />F: shoot (once you have the bow) &nbsp;·&nbsp; C: change skin &nbsp;·&nbsp; M: map overview &nbsp;·&nbsp; F1: collision debug</div>
     <div id="toast"></div>
     <div id="dialog"><div class="name"></div><div class="text"></div><div class="more">▼</div></div>
     <div id="dpad">
@@ -80,6 +83,7 @@
       <button data-d="right">▶</button><button data-d="down">▼</button>
     </div>
     <button id="act">E</button>
+    <button id="bow">Bow</button>
     <div id="hud"></div>
     <div id="battle">
       <div class="bars">

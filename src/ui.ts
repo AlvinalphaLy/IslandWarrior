@@ -9,6 +9,12 @@ export function setActionHandler(fn: () => void) {
   actionHandler = fn;
 }
 
+let shootHandler: () => void = () => {};
+/** the touch "bow" button (shoots, like F) */
+export function setShootHandler(fn: () => void) {
+  shootHandler = fn;
+}
+
 export function initUi() {
   document.querySelectorAll<HTMLButtonElement>('#dpad button').forEach((b) => {
     const d = b.dataset.d as keyof MoveInput;
@@ -19,6 +25,7 @@ export function initUi() {
     b.addEventListener('pointercancel', set(false));
   });
   document.getElementById('act')?.addEventListener('pointerdown', (e) => { e.preventDefault(); actionHandler(); });
+  document.getElementById('bow')?.addEventListener('pointerdown', (e) => { e.preventDefault(); shootHandler(); });
   const dlg = document.getElementById('dialog')!;
   dlg.style.pointerEvents = 'auto';
   dlg.addEventListener('pointerdown', () => actionHandler());

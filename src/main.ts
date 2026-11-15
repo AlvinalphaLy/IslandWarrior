@@ -21,7 +21,7 @@ const game = new Phaser.Game({
   },
   physics: { default: 'arcade', arcade: { debug: false } },
   // one MapScene per Tiled map in public/assets/maps (scene key = map name)
-  scene: [PreloadScene, new MapScene('village'), new MapScene('cave'), new MapScene('dungeon'), new MapScene('circe'), new BattleScene()],
+  scene: [PreloadScene, new MapScene('village'), new MapScene('cave'), new MapScene('dungeon'), new MapScene('circe'), new MapScene('cyclops'), new BattleScene()],
 });
 
 // exposed for the smoke test (tools/smoke.mjs) and console debugging

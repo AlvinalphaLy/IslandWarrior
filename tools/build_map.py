@@ -465,7 +465,7 @@ spawn_objs.append(dict(id=next_id(), name='cyclops_head', type='statue', x=304.0
                                    dict(name='lureAt', type='string', value='326,340'),
                                    dict(name='awaken', type='string', value='pour'),
                                    dict(name='aura', type='string', value='wine'),
-                                   dict(name='target', type='string', value='dungeon'),
+                                   dict(name='target', type='string', value='cyclops'),
                                    dict(name='arrive', type='string', value='282,340'),
                                    dict(name='footW', type='int', value=26), dict(name='footH', type='int', value=9)]))
 sign_i = 0

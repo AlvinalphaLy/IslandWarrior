@@ -3,9 +3,10 @@ import { Player } from '../entities/Player';
 import { Npc } from '../entities/Npc';
 import { PLAYER_SKINS } from '../entities/Character';
 import { dialogFor, DialogEntry } from '../data/dialog';
-import { touch, setActionHandler, showDialog, toast, updateHud } from '../ui';
+import { touch, setActionHandler, setShootHandler, showDialog, toast, updateHud } from '../ui';
 import { Enemy } from '../entities/Enemy';
 import { Ship } from '../entities/Ship';
+import { Archery } from '../entities/Archery';
 import { CHEST_REWARDS, ENEMIES, PlayerStats, START_STATS } from '../data/enemies';
 import type { BattleData, BattleResult } from './BattleScene';
 
@@ -81,6 +82,8 @@ export class MapScene extends Phaser.Scene {
   private vignette: Phaser.GameObjects.Image | null = null;
   /** the sailable ship (village only), its interactable, and the talk area relative to its waterline centre */
   private ship: Ship | null = null;
+  /** Odysseus' bow: arrows, targets, gates, axes and sheep (Spawns of those types; see Archery.ts) */
+  private archery: Archery | null = null;
   private shipIt: Interactable | null = null;
   private shipTalk = new Phaser.Geom.Rectangle();
   private sailing = false;
@@ -138,6 +141,10 @@ export class MapScene extends Phaser.Scene {
     this.placeObjects();
     this.buildCollision();
     this.spawnActors();
+    this.archery = new Archery(
+      { scene: this, walls: this.walls, player: this.player, say: (key) => this.say(key) },
+      this.layer('Spawns'), this.layer('Collision'),
+    );
 
     const cam = this.cameras.main;
     cam.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
@@ -375,6 +382,7 @@ export class MapScene extends Phaser.Scene {
       ['keydown-E', () => this.interact()], ['keydown-SPACE', () => this.interact()], ['keydown-ENTER', () => this.interact()],
       ['keydown-M', () => this.toggleOverview()],
       ['keydown-C', () => this.cycleSkin()],
+      ['keydown-F', () => this.shoot()],
       ['keydown-F1', () => { this.debugOn = !this.debugOn; this.debugGfx.setVisible(this.debugOn); }],
     ];
     // After a restart Phaser 3.80's keyboard plugin can also deliver the same DOM event twice, so act once per event
@@ -384,6 +392,21 @@ export class MapScene extends Phaser.Scene {
     for (const [ev, fn] of handlers) kb.on(ev, fn);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { for (const [ev, fn] of handlers) kb.off(ev, fn); });
     setActionHandler(() => this.interact());
+    setShootHandler(() => this.shoot());
+  }
+
+  /** F (or the bow button): shoot an arrow, once Odysseus has found his bow. */
+  private shoot() {
+    if (this.dialog || this.leaving || this.cutscene || this.sailing || this.inBattle) return;
+    this.archery?.shoot(this.time.now);
+  }
+
+  /** Open a dialog by key (used by Archery for the bow). */
+  private say(key: string) {
+    this.dialog = { entry: dialogFor(key), line: 0 };
+    this.player.frozen = true;
+    this.player.move(0, 0);
+    this.renderDialog();
   }
 
   /** Cycle the player through PLAYER_SKINS (Odysseus, Adam and the Greek gods). */
@@ -898,6 +921,7 @@ export class MapScene extends Phaser.Scene {
       this.player.update(input);
     }
     this.ship?.update(time);
+    this.archery?.update(time, delta);
     if (this.ship) {
       // the sail is tall: when the ship sits in front of a statue (or its chest), fade it so you can see what happens
       const ship = this.ship;
