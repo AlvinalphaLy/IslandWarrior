@@ -20,8 +20,8 @@ export const DIALOG: Record<string, DialogEntry> = {
   cyclops_head: { name: 'Head of Polyphemus', lines: ['Words are scratched into the stone brow: "Nobody did this to me."', 'The open jaw breathes wine and the smell of sheep. You climb down into the dark...'] },
   cyclops_head_awaken: { name: 'Polyphemus', lines: ['"Wine... strong, sweet wine! More, little stranger. What is your name?"', '"Nobody," you answer. The stone jaw grinds open onto a cave below. Press E at the head to enter.'] },
   // ---- the Laestrygonians: the giant's fist on the narrow islet, and their harbour (src/entities/Harbor.ts) ----
-  antiphates: { name: 'Antiphates', lines: ['The stone king of the Laestrygonians, arms flung wide toward a harbour hidden in the cliffs.', 'A wave lifts the ship and sweeps it in between the rocks...'] },
-  antiphates_awaken: { name: 'Antiphates', lines: ['"Guests! Come, my harbour is calm." The statue hurls its boulder far out over the bay, and beyond the cliffs, giants roar.', 'This is the land of the Laestrygonians, eaters of men. Press E at the king to sail into his harbour.'] },
+  homer: { name: 'Homer', lines: ['"...to Telepylus, land of the Laestrygonians, and its harbour ringed with sheer cliffs."', 'The golden lyre rings. A wave lifts the ship and sweeps it into the tale...'] },
+  homer_awaken: { name: 'Homer', lines: ['The blind poet\'s stone lyre turns to gold. "Sing to me, Muse, of the man of many turns..."', '"...and of the giants who hurled boulders from the cliffs." Press E at Homer to sail into the tale.'] },
   harbor_intro: { name: 'Telepylus', lines: ['Giants on the cliffs! Watch for the shadows on the water, and sail south out of the harbour mouth!'] },
   // ---- the cave of Polyphemus (tools/build_cyclops_cave.py, src/entities/Archery.ts) ----
   bow_found: { name: 'The bow of Odysseus', lines: ['Your great bow, the one no other man can string!', 'Press F to shoot (on touch: the Bow button). Arrows fly over chasms, but not through stone, bronze or sheep.', 'Bronze targets work the cave\'s old mechanisms. Strike them.'] },

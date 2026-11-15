@@ -1,6 +1,6 @@
 """Author the harbour of the Laestrygonians at Telepylus (public/assets/maps/telepylus.json): the ship escape.
 
-Entered through the statue of King Antiphates on the narrow islet. You start aboard the black ship in an inner basin walled by
+Entered through Homer's statue on the narrow islet (he sings you into the tale). You start aboard the black ship in an inner basin walled by
 cliffs; a winding channel leads south to the harbour mouth (the bottom edge of the map). Giants on the cliff tops hurl
 boulders at the ship (src/entities/Harbor.ts): sail out of the mouth to escape.
 
@@ -174,7 +174,7 @@ layers = [
 ]
 tmj = dict(type='map', version='1.10', tiledversion='1.10.2', orientation='orthogonal', renderorder='right-down',
            width=W, height=H, tilewidth=TS, tileheight=TS, infinite=False, nextlayerid=6, nextobjectid=oid[0] + 1,
-           properties=[typed('harbor', True), typed('returnTo', 'antiphates')],
+           properties=[typed('harbor', True), typed('returnTo', 'homer')],
            tilesets=[dict(firstgid=FIRST_WATER, name='water', image='../tilesets/water.png', imagewidth=water_im.width,
                           imageheight=water_im.height, tilewidth=TS, tileheight=TS, columns=WATER_COUNT, tilecount=WATER_COUNT,
                           margin=0, spacing=0),

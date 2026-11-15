@@ -1,8 +1,7 @@
 """Draw the Laestrygonian props as 16px-style pixel art, into public/assets/props/:
 
-  antiphates.png  2 frames of 22x34: a granite statue of Antiphates, king of the Laestrygonians, on a plinth on the
-                  narrow islet: crowned and bearded, a boulder raised over his head (0, dormant) / arms flung out,
-                  the boulder thrown (1, awake)
+  homer.png       2 frames of 20x40: a marble statue of Homer, the blind poet, in a draped himation with his lyre, on a
+                  plinth on the narrow islet: still stone (0) / the lyre turned to gold as he sings (1)
   giant.png       2 frames of 26x28: a Laestrygonian giant on the harbour cliffs, a rock held over his head (0) /
                   arms flung out, just thrown (1). The game draws it at 2x: they are giants.
   rock.png        12x10: a thrown boulder (also drawn at 2x in flight)
@@ -20,6 +19,9 @@ PAL = {
     # granite of the king's statue
     'S': (164, 148, 126), 's': (120, 106, 90), 'T': (198, 184, 160), 'c': (40, 32, 28),
     'b': (96, 82, 68), 'd': (128, 112, 94),
+    # Homer's marble, and the gold his lyre turns when he sings
+    'W': (238, 234, 224), 'w': (206, 200, 188), 'v': (164, 158, 148), 'V': (124, 118, 112), 'x': (88, 84, 84),
+    'Y': (246, 210, 96), 'y': (190, 140, 40),
     # boulder (cooler grey)
     'G': (104, 106, 114), 'g': (72, 74, 84), 'H': (140, 142, 150), 'h': (176, 178, 184),
     # giant: sunburnt skin, beard, leather
@@ -38,55 +40,50 @@ def sprite(rows, w=None):
                 a[y, x] = (*PAL[ch], 255)
     return a
 
-KING_BODY = [                       # from the shoulders down: beard, belted robe, legs, plinth
-    '...OSSSSSSSSSSSSSSO...',
-    '...OTSSSSSSSSSSSSsO...',
-    '...OTSSSSSSSSSSSssO...',
-    '....OTSSSSSSSSSssO....',
-    '....OssssssssssssO....',      # belt (carved)
-    '....OSSSSSSSSSSSsO....',
-    '....OTSSSSSSSSSSsO....',
-    '....OTSSSSOSSSSSsO....',
-    '....OTSSSO.OSSSSsO....',
-    '....OTSSO...OSSSsO....',
-    '....OSSSO...OSSSO.....',
-    '...OSSSSO...OSSSSO....',
-    '..OOOOOOOOOOOOOOOOO...',
-    '..OTTTTTTTTTTTTTTTO...',
-    '..OSSSSSSSSSSSSSssO...',
-    '..OsssssssssssssssO...',
-    '..OOOOOOOOOOOOOOOOO...',
+HOMER = [                           # 'L' = the lyre: marble in frame 0, gold in frame 1
+    '.......OOOO.........',
+    '......OvvvvO........',
+    '.....OvWWWWvO.......',
+    '....OvWWWWWWvO......',
+    '....OvWxWWxWvO......',
+    '....OvWWWvWWvO......',
+    '....OVvWWWWvVO......',
+    '....OVvvVvVvvVO.....',
+    '.....OVvVvVvVO......',
+    '......OVvVvVO.......',
+    '.....OOOVvVOOO......',
+    '...OOWWWWWWWWWOO....',
+    '..OWWWWWvWWWWWWOL.LO',
+    '..OWWWWvWWWWWWWOL.LO',
+    '.OWWWWvWWWWWWWWOLLLO',
+    '.OWWWvWWWWWWWWWOLWLO',
+    '.OWWvWWWWWWWWWWOLWLO',
+    '.OWvWWWWWWWWWWOLLLLO',
+    'OWWvWWWWWWWWWWWOLLO.',
+    'OWvWWWWWWWWWWWWWOO..',
+    'OvWWWWWWWWWWWWWWvO..',
+    'OWWOWWWWvWWWWWWWvO..',
+    '.OO.OWWWvWWWWWWWvO..',
+    '....OWWvWWWWWWWWvO..',
+    '....OWWvWWWWWWWWvO..',
+    '....OWvWWWWWWWWvO...',
+    '....OWvWWWWWWWWvO...',
+    '....OvWWWWWWWWWvO...',
+    '....OWWWWvWWWWWvO...',
+    '....OWWWvWWWWWWvO...',
+    '....OWWvWWWWWWWvO...',
+    '....OWvWWWWWWWWvO...',
+    '....OvWWWWWWWWvvO...',
+    '...OWWWWWWWWWWWWvO..',
+    '...OOWWOOOOOWWOOOO..',
+    '.OOOOOOOOOOOOOOOOOO.',
+    '.OWWWWWWWWWWWWWWWwO.',
+    '.OwwwwwwwwwwwwwwwvO.',
+    '.OvvvvvvvvvvvvvvvVO.',
+    '.OOOOOOOOOOOOOOOOOO.',
 ]
-KING_HOLD = [
-    '......OOOOOOOOO.......',
-    '....OOGGHHHHHHGOO.....',
-    '...OGGHHhhhhHHHGGO....',
-    '...OGHHhhhhHHHHGgO....',
-    '...OGGHHHHHHHHGGgO....',
-    '.OO.OOGGGGGGGGggOO.OO.',
-    'OSTO.OOOOOOOOOOOO.OTSO',
-    'OSTO..............OTSO',
-    'OSsO...OTOTOTO....OsSO',      # crown points
-    '.OSO...OTOTOTO....OSO.',
-    '.OSO..OTTTTTTTO...OSO.',      # crown band
-    '.OSO..OSSSSSSSO...OSO.',
-    '.OSO..OScSSScSO...OSO.',      # eyes
-    '.OSSOOOSSSsSSSOOOOSSO.',      # nose, shoulders
-    '..OSSSObdbdbdbOSSSSO..',      # beard (carved)
-    '..OSSSSObdbdbOSSSSSO..',
-    '...OSSSSObdbOSSSSSO...',
-] + KING_BODY
-KING_THROWN = ['......................'] * 8 + [
-    '.......OTOTOTO........',
-    '.......OTOTOTO........',
-    '......OTTTTTTTO.......',
-    '......OSSSSSSSO.......',
-    '......OScSSScSO.......',
-    'OOOOOOOSSSsSSSOOOOOOO.',      # arms flung out
-    'OTSSSSObdbdbdbOSSSSTO.',
-    'OsSSSSSObdbdbOSSSSSsO.',
-    '.OOOOSSSObdbOSSSOOOO..',
-] + KING_BODY
+HOMER_MARBLE = [r.replace('L', 'v') for r in HOMER]   # 0: all stone
+HOMER_GOLD = [r.replace('L', 'Y') for r in HOMER]     # 1: the lyre turned to gold as he sings
 
 GIANT_HOLD = [
     '.........OOOOOOO..........',
@@ -151,7 +148,7 @@ def save(name, frames):
     return im, w, h
 
 if __name__ == '__main__':
-    out = {'antiphates': save('antiphates', [KING_HOLD, KING_THROWN]), 'giant': save('giant', [GIANT_HOLD, GIANT_THROW]),
+    out = {'homer': save('homer', [HOMER_MARBLE, HOMER_GOLD]), 'giant': save('giant', [GIANT_HOLD, GIANT_THROW]),
            'rock': save('rock', [ROCK])}
     for k, (_, w, h) in out.items():
         print(f'{k}: frames of {w}x{h}')

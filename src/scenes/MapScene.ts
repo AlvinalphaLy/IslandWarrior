@@ -8,7 +8,7 @@ import { Enemy } from '../entities/Enemy';
 import { Ship } from '../entities/Ship';
 import { Archery } from '../entities/Archery';
 import { Harbor } from '../entities/Harbor';
-import { CHEST_REWARDS, ENEMIES, PlayerStats, START_STATS } from '../data/enemies';
+import { CHEST_REWARDS, ENEMIES, FX_FRAME, PlayerStats, START_STATS } from '../data/enemies';
 import type { BattleData, BattleResult } from './BattleScene';
 
 const FLIP_H = 0x80000000;
@@ -43,7 +43,7 @@ interface Interactable {
  */
 interface StatueSpot {
   it: Interactable; x: number; y: number; arrive: Phaser.Math.Vector2;
-  sprite: Phaser.GameObjects.Sprite; aura: AuraStyle | null; chest: Phaser.GameObjects.Sprite | null; style: 'rise' | 'pour' | 'hurl';
+  sprite: Phaser.GameObjects.Sprite; aura: AuraStyle | null; chest: Phaser.GameObjects.Sprite | null; style: 'rise' | 'pour' | 'hurl' | 'sing';
   /** not woken yet: the first E plays its awakening instead of entering */
   asleep: boolean;
 }
@@ -277,15 +277,16 @@ export class MapScene extends Phaser.Scene {
         const statue = this.add.sprite(s.x, s.y, key).setOrigin(0.5, 1).setDepth(s.y - fh / 2);
         // `lure`: a sprite (the treasure chest, the amphora) stands at `lureAt` (default: on the statue's spot) until
         // used; `awaken` says what using it does: 'rise' (default, the statue rises: awaken()), 'pour' (pourWine()),
-        // or 'hurl' (no lure: King Antiphates hurls the boulder he holds the first time: hurlBoulder())
+        // 'hurl' (no lure: a statue hurls the boulder it holds the first time: hurlBoulder()), or 'sing' (no lure:
+        // Homer plays his lyre the first time: singTale())
         const lure = prop(s, 'lure', '');
         const awakenProp = prop<string>(s, 'awaken', 'rise');
-        const style: StatueSpot['style'] = awakenProp === 'pour' || awakenProp === 'hurl' ? awakenProp : 'rise';
-        const asleep = (!!lure || style === 'hurl') && !((this.registry.get('awakened') as string[] | undefined) ?? []).includes(s.name);
+        const style: StatueSpot['style'] = awakenProp === 'pour' || awakenProp === 'hurl' || awakenProp === 'sing' ? awakenProp : 'rise';
+        const asleep = (!!lure || style === 'hurl' || style === 'sing') && !((this.registry.get('awakened') as string[] | undefined) ?? []).includes(s.name);
         const la = prop(s, 'lureAt', '').split(',').map(Number);
         const [lx, ly] = la.length === 2 ? la : [s.x, s.y];
         const chest = asleep && lure ? this.add.sprite(lx, ly, lure, 0).setOrigin(0.5, 1).setDepth(ly - 2) : null;
-        if (style === 'hurl' && !asleep) statue.setFrame(1);   // arms flung out, the boulder thrown
+        if ((style === 'hurl' || style === 'sing') && !asleep) statue.setFrame(1);   // boulder thrown / lyre turned gold
         // `aura`: true = black smoke, or the name of an AURAS palette ('wine')
         const auraProp = prop<boolean | string>(s, 'aura', false);
         const aura: AuraStyle | null = auraProp === true ? 'black' : typeof auraProp === 'string' && auraProp in AURAS ? auraProp as AuraStyle : null;
@@ -543,7 +544,12 @@ export class MapScene extends Phaser.Scene {
   /** Read the statue's lines; closing them takes you into its dungeon. While the lure stands there, open it instead. */
   private openStatue(it: Interactable, byShip: boolean) {
     const spot = this.statues.find((st) => st.it === it);
-    if (spot?.asleep) return spot.style === 'pour' ? this.pourWine(spot) : spot.style === 'hurl' ? this.hurlBoulder(spot) : this.awaken(spot);
+    if (spot?.asleep) {
+      if (spot.style === 'pour') return this.pourWine(spot);
+      if (spot.style === 'hurl') return this.hurlBoulder(spot);
+      if (spot.style === 'sing') return this.singTale(spot);
+      return this.awaken(spot);
+    }
     this.dialog = { entry: dialogFor(it.dialog), line: 0, target: it, onClose: () => this.enterStatue(it, byShip) };
     this.player.frozen = true;
     this.renderDialog();
@@ -720,7 +726,38 @@ export class MapScene extends Phaser.Scene {
   }
 
   /**
-   * The Laestrygonian king's statue wakes: it trembles, the ground rumbles, and it hurls the boulder it holds over its
+   * Homer begins the tale: his stone lyre turns to gold, a golden glow pulses and music notes (the battle fx sheet's
+   * note frame) rise from the strings and drift out over the sea toward the tale's harbour. ~2.4 s.
+   */
+  private singTale(st: StatueSpot) {
+    st.asleep = false;
+    this.cutscene = true;
+    this.player.frozen = true;
+    this.registry.set('awakened', [...((this.registry.get('awakened') as string[] | undefined) ?? []), st.it.id]);
+    const s = st.sprite;
+    const lyre = { x: st.x + 7, y: st.y - s.height + 16 };   // the lyre on the statue's left arm
+    s.setFrame(1);
+    this.cameras.main.flash(260, 255, 226, 140);
+    const glow = this.add.circle(lyre.x, lyre.y, 10, 0xffe08a, 0.35).setDepth(s.depth + 1);
+    this.tweens.add({ targets: glow, scale: 1.8, alpha: 0, duration: 900, repeat: 1, onComplete: () => glow.destroy() });
+    for (let i = 0; i < 9; i++) {
+      this.time.delayedCall(i * 190, () => {
+        const n = this.add.image(lyre.x, lyre.y, 'gk_fx', FX_FRAME.note).setScale(0.35).setDepth(10000).setAlpha(0);
+        const tx = lyre.x + Phaser.Math.Between(30, 90), ty = lyre.y - Phaser.Math.Between(20, 60);
+        this.tweens.add({ targets: n, alpha: { from: 1, to: 0 }, x: tx, duration: 1300, ease: 'Sine.out', onComplete: () => n.destroy() });
+        this.tweens.add({ targets: n, y: ty, duration: 1300, ease: 'Sine.inOut' });
+        this.tweens.add({ targets: n, angle: { from: -15, to: 15 }, duration: 320, yoyo: true, repeat: 2 });
+      });
+    }
+    this.time.delayedCall(2400, () => {
+      this.cutscene = false;
+      this.dialog = { entry: dialogFor(`${st.it.id}_awaken`), line: 0, target: st.it };
+      this.renderDialog();
+    });
+  }
+
+  /**
+   * A Laestrygonian statue wakes: it trembles, the ground rumbles, and it hurls the boulder it holds over its
    * head far out to sea (a long arc, a shadow racing ahead, a towering splash); its arms stay flung out (frame 1). ~2.6 s.
    */
   private hurlBoulder(st: StatueSpot) {
