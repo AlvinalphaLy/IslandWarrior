@@ -24,7 +24,7 @@ export const DIALOG: Record<string, DialogEntry> = {
   homer_awaken: { name: 'Homer', lines: ['The blind poet\'s stone lyre turns to gold. "Sing to me, Muse, of the man of many turns..."', '"...and of the giants who hurled boulders from the cliffs." Press E at Homer to sail into the tale.'] },
   harbor_intro: { name: 'Telepylus', lines: ['Giants on the cliffs! Watch for the shadows on the water, and sail south out of the harbour mouth!'] },
   // ---- the cave of Polyphemus (tools/build_cyclops_cave.py, src/entities/Archery.ts) ----
-  bow_found: { name: 'The bow of Odysseus', lines: ['Your great bow, the one no other man can string!', 'Press F to shoot (on touch: the Bow button). Arrows fly over chasms, but not through stone, bronze or sheep.', 'Bronze targets work the cave\'s old mechanisms. Strike them.'] },
+  bow_found: { name: 'The bow of Odysseus', lines: ['Your great bow, the one no other man can string!', 'Press F to shoot (on touch: the Bow button).', 'Below is the test of the axes: six axes in a row, each with a ring at the top, and a boulder sealing the den.', 'Stand on the chalk mark where the gold arrow bounces and press F. Your arrow will fly through every ring into the bronze target.'] },
   chest_cyclops: { name: "Polyphemus' hoard", lines: ['Cheeses, fleeces, wine jars... and a flask of ambrosia, hidden from his own flock.'] },
   horse_statue: { name: 'Wooden Horse', lines: ['A great horse carved from ship timber, rearing toward the sea.', 'The plaque reads: "Beware of Greeks bearing gifts."'] },
 

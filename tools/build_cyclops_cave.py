@@ -4,14 +4,10 @@ Entered through the mouth of the stone Cyclops head on the bay islet (after pour
 leads back out. Uses the Fungus Cave tileset already in the game (public/assets/tilesets/cave.png), so it runs
 without the asset packs. The puzzle props and their rules live in src/entities/Archery.ts.
 
-Three bands of floor, split by two chasms (arrows fly over chasms, you can't walk over them):
-
-  zone 1 (rows 3-6)    the ladder and the bow.  Shoot DOWN across chasm A at target A (zone 2, left)
-  chasm A (rows 7-8)   -> a plank bridge drops at the right end
-  zone 2 (rows 9-12)   sheep graze on the left.  Shoot DOWN past them, across chasm B, at target B (zone 3, left)
-  chasm B (rows 13-14) -> a plank bridge drops near the middle
-  zone 3 (rows 15-17)  six axes stand in a row. From the chalk mark, shoot RIGHT through every ring-hole at the last
-                       target: the boulder rolls aside from the den, where Polyphemus sleeps off the wine by his hoard.
+One challenge, the test of the axes: pick up the bow by the ladder, walk down to the chalk mark (a gold arrow
+bounces over it), press F, and the arrow flies through the ring of all six axes into the bronze target. The boulder
+breaks loose and rolls straight into Polyphemus, asleep by his hoard: crushed, no fight.
+(The longer version, with two chasms, bridge targets and sheep in the line of fire, comes back with SHORT = False.)
 
 Run: python tools/build_cyclops_cave.py  -> also writes cache/cyclops_render.png + cache/cyclops_collision.png
 """
@@ -62,9 +58,11 @@ LADDER_X = 3
 for dy, t in enumerate((99, 107, 115)):
     g1[dy][LADDER_X] = t
 
-# chasms (2-row pits: 67-69 over 75-77), and where their bridges will drop
-CHASMS = [(1, 7, 28, 8), (1, 13, 28, 14)]
-BRIDGES = {'bridge_a': (25, 7, 26, 8), 'bridge_b': (18, 13, 19, 14)}
+# chasms (2-row pits: 67-69 over 75-77), and where their bridges will drop. SHORT: no chasms, straight to the axes.
+SHORT = True
+# SHORT keeps one chasm fencing the top of the den, so the boulder stays the only way in
+CHASMS = [(21, 13, 28, 14)] if SHORT else [(1, 7, 28, 8), (1, 13, 28, 14)]
+BRIDGES = {} if SHORT else {'bridge_a': (25, 7, 26, 8), 'bridge_b': (18, 13, 19, 14)}
 for x0, y0, x1, y1 in CHASMS:
     for y in range(y0, y1 + 1):
         for x in range(x0, x1 + 1):
@@ -148,30 +146,35 @@ point('player', 'player', LADDER_X * TS + 8, 4 * TS + 6, sprite='odysseus')
 area('exit_ladder', 'exit', LADDER_X * TS + 1, 3 * TS - 2, 14, 9, target='village')
 point('bow', 'bow', 7 * TS + 8, 5 * TS + 4, dialog='bow_found')
 
-# zone 1 -> zone 2: target A sits below the chasm, right under where you stand in zone 1
-point('target_a', 'target', 5 * TS + 8, 11 * TS + 8, opens='bridge_a', face='down')
-x0, y0, x1, y1 = BRIDGES['bridge_a']
-area('bridge_a', 'gate', x0 * TS, y0 * TS, (x1 - x0 + 1) * TS, (y1 - y0 + 1) * TS, style='bridge')
-
-# zone 2 -> zone 3: target B across chasm B on the far left; the flock grazes in the line of fire
-point('target_b', 'target', 3 * TS + 8, 17 * TS + 8, opens='bridge_b', face='down')
-x0, y0, x1, y1 = BRIDGES['bridge_b']
-area('bridge_b', 'gate', x0 * TS, y0 * TS, (x1 - x0 + 1) * TS, (y1 - y0 + 1) * TS, style='bridge')
-for i, (sx, sy) in enumerate([(3 * TS + 8, 11 * TS + 10), (6 * TS, 12 * TS + 4), (9 * TS, 11 * TS), (2 * TS + 8, 10 * TS)]):
-    point(f'sheep_{i}', 'sheep', sx, sy, wander=34)
+if not SHORT:
+    # zone 1 -> zone 2: target A sits below the chasm, right under where you stand in zone 1
+    point('target_a', 'target', 5 * TS + 8, 11 * TS + 8, opens='bridge_a', face='down')
+    x0, y0, x1, y1 = BRIDGES['bridge_a']
+    area('bridge_a', 'gate', x0 * TS, y0 * TS, (x1 - x0 + 1) * TS, (y1 - y0 + 1) * TS, style='bridge')
+    # zone 2 -> zone 3: target B across chasm B on the far left; the flock grazes in the line of fire
+    point('target_b', 'target', 3 * TS + 8, 17 * TS + 8, opens='bridge_b', face='down')
+    x0, y0, x1, y1 = BRIDGES['bridge_b']
+    area('bridge_b', 'gate', x0 * TS, y0 * TS, (x1 - x0 + 1) * TS, (y1 - y0 + 1) * TS, style='bridge')
+    for i, (sx, sy) in enumerate([(3 * TS + 8, 11 * TS + 10), (6 * TS, 12 * TS + 4), (9 * TS, 11 * TS), (2 * TS + 8, 10 * TS)]):
+        point(f'sheep_{i}', 'sheep', sx, sy, wander=34)
 
 # zone 3: the axes. Their ring-holes line up 22px above their feet; arrows leave a shooter 10px above the feet,
 # so you shoot from feet = AXE_FOOT - 12 (the chalk mark), straight along the row to the final target.
 AXE_FOOT = 268
 RING = AXE_FOOT - 22
+# the test of the axes: from the chalk mark, shoot right through the ring at the top of every axe to the target.
+# The mark guides the player (src/entities/Archery.ts): a bouncing arrow shows it, shooting near it lines you up,
+# and standing on it shows the arrow's path through the rings.
 for i, tx in enumerate(range(6, 17, 2)):
     point(f'axe_{i}', 'axe', tx * TS + 8, AXE_FOOT)
-point('shooting_mark', 'mark', 2 * TS + 8, RING + 10)
+point('shooting_mark', 'mark', 2 * TS + 8, RING + 10, face='right')
 point('target_final', 'target', 20 * TS + 8, RING + 16, opens='boulder', face='right', rings=6)
-area('boulder', 'gate', 21 * TS, 15 * TS, 2 * TS, 3 * TS, style='boulder')
+# the boulder: hitting the target sends it rolling into Polyphemus (`crush`), no fight
+area('boulder', 'gate', 21 * TS, 15 * TS, 2 * TS, 3 * TS, style='boulder', crush='polyphemus')
 
 # the den: Polyphemus asleep (a boss: touching him starts the fight) beside his hoard
-point('polyphemus', 'enemy', 25 * TS + 8, 17 * TS + 10, enemy='polyphemus')
+# Polyphemus asleep: a `giant` (scenery that blocks the way), not a battle enemy. The boulder crushes him.
+point('polyphemus', 'giant', 25 * TS + 8, 17 * TS + 10, sprite='gk_polyphemus', crushedBy='boulder')
 point('snore', 'snore', 26 * TS + 6, 14 * TS + 10)   # above his head (the boss sprite is 48 tall)
 area('chest_cyclops', 'chest', 27 * TS, 15 * TS, 32, 16, dialog='chest_cyclops')
 

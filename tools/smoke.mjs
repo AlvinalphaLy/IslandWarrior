@@ -208,21 +208,21 @@ await page.evaluate(() => {
 });
 await new Promise((r) => setTimeout(r, 200));
 await tap('KeyE'); // board
-await page.evaluate(() => window.game.scene.getScene('village').ship.pos.set(318, 350)); // just south of the islet
+await page.evaluate(() => window.game.scene.getScene('village').ship.pos.set(375, 372)); // beside Circe's islet (south-east)
 await new Promise((r) => setTimeout(r, 300));
 await page.screenshot({ path: 'cache/shot_statue.png' });
 // first visit: a treasure chest stands there. E opens it (+50 gold) and Circe's statue rises in its place
-const chestBefore = await page.evaluate(() => { const s = window.game.scene.getScene('village'); const st = s.statues[0];
+const chestBefore = await page.evaluate(() => { const s = window.game.scene.getScene('village'); const st = s.statues.find((t) => t.it.id === 'circe_statue');
   return { chest: !!st.chest, statue: st.sprite.visible }; });
 await tap('KeyE');
 await new Promise((r) => setTimeout(r, 1900));
 await page.screenshot({ path: 'cache/shot_awaken_mid.png' });
 await new Promise((r) => setTimeout(r, 1900));
-const risen = await page.evaluate(() => { const s = window.game.scene.getScene('village'); const st = s.statues[0];
+const risen = await page.evaluate(() => { const s = window.game.scene.getScene('village'); const st = s.statues.find((t) => t.it.id === 'circe_statue');
   return { chest: !!st.chest, statue: st.sprite.visible, cropped: st.sprite.isCropped, y: st.sprite.y, dialog: document.querySelector('#dialog .name').textContent,
     hud: document.getElementById('hud').innerText, awakened: window.game.registry.get('awakened') }; });
 console.log('chest opens, statue rises:', JSON.stringify(chestBefore), JSON.stringify(risen),
-  chestBefore.chest && !chestBefore.statue && !risen.chest && risen.statue && !risen.cropped && risen.y === 332 && risen.dialog === 'Circe' && risen.hud.includes('Gold 50') ? 'OK' : 'FAIL');
+  chestBefore.chest && !chestBefore.statue && !risen.chest && risen.statue && !risen.cropped && risen.y === 364 && risen.dialog === 'Circe' && risen.hud.includes('Gold 50') ? 'OK' : 'FAIL');
 await page.screenshot({ path: 'cache/shot_awaken_end.png' });
 await tap('KeyE'); await tap('KeyE'); // close Circe's lines
 await tap('KeyE');
@@ -244,7 +244,7 @@ const climbOut = async (scene) => {
 };
 await climbOut('circe');
 const helm = await shipState();
-console.log('back at the helm by the islet:', JSON.stringify(helm), helm.scene === 'village' && helm.sailing && helm.x === 318 && helm.y === 350 ? 'OK' : 'FAIL');
+console.log('back at the helm by the islet:', JSON.stringify(helm), helm.scene === 'village' && helm.sailing && helm.x === 375 && helm.y === 372 ? 'OK' : 'FAIL');
 // on foot: land on the islet, walk up to the statue, E -> grotto -> back beside the statue
 await tap('KeyE'); // the statue is in reach of the ship, so this opens it again; close without entering is not possible,
 await tap('KeyE'); await tap('KeyE');
@@ -256,7 +256,7 @@ await page.evaluate(() => {
   s.sailing = false; s.player.body.enable = true; s.player.setVisible(true); s.player.frozen = false;
   s.ship.pos.set(406, 292); // park the ship back at its mooring, out of the way
   document.querySelector('#dialog .name').textContent = '';
-  s.player.setPosition(288, 335); s.player.body.reset(288, 335); s.player.setPosition(288, 335); s.player.face('right');
+  s.player.setPosition(424, 374); s.player.body.reset(424, 374); s.player.setPosition(424, 374); s.player.face('up');
   s.cameras.main.startFollow(s.player);
 });
 await new Promise((r) => setTimeout(r, 200));
@@ -268,7 +268,7 @@ const grotto2 = await active();
 console.log('statue on foot:', footDlg, grotto2, footDlg.includes('Circe') && grotto2 === 'circe' ? 'OK' : 'FAIL');
 await climbOut('circe');
 const foot = await shipState();
-console.log('back on the islet on foot:', JSON.stringify(foot.player), foot.scene === 'village' && !foot.sailing && foot.player.visible && Math.abs(foot.player.x - 286) < 6 && Math.abs(foot.player.y - 335) < 6 ? 'OK' : 'FAIL');
+console.log('back on the islet on foot:', JSON.stringify(foot.player), foot.scene === 'village' && !foot.sailing && foot.player.visible && Math.abs(foot.player.x - 424) < 6 && Math.abs(foot.player.y - 374) < 6 ? 'OK' : 'FAIL');
 // campfire: the fire and its log seats are one block; the white bushes below block too
 const campfire = await walkFrom(431, 172, 'KeyW', 900);
 console.log('campfire blocks (no slipping between the logs):', campfire, campfire.y >= 165 ? 'OK' : 'FAIL');

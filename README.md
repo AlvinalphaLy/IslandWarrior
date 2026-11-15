@@ -17,6 +17,7 @@ npm run dev        # http://localhost:5173
 | Board the black ship (stand on the beach by it, press E) | Sail it with WASD / arrows: it only moves on open water, turns to face its heading and leaves a wake. Press E near any shore to step off; the ship stays where you left it. Sailing off the south edge of the map is the voyage to the `lair` scene, once `achilles` is in the registry's `unlocks`; until then the crew refuses. Coming home lands you on the beach with the ship back at its mooring. |
 | Circe's statue (the islet in the bay) | Sail up beside the islet and press E from the ship, or land and press E facing it. You enter **Circe's grotto** (`circe` map: `npm run map:circe`, a violet variant of the sewer dungeon with sirens, shades and a chest of moly). The ladder brings you back where you came from: at the helm if you came by ship, otherwise beside the statue. |
 | Walk up into a ladder | Climbs back out through the door you came in by |
+| Win a statue challenge | Crushing Polyphemus (Cyclops den) or beating the Siren (Circe's grotto) hands you that dungeon's hoard and returns you to the ship's helm automatically, however you arrived. The bosses and chests are listed in `CHALLENGES` in `src/scenes/MapScene.ts`. |
 | Touch a monster (dungeon) | Starts a battle. **1–4** or the arrow keys + Enter choose Attack / Defend / Potion / Run. |
 | C | Change the player's skin: Adam → Zeus → Hermes → Hades → Heracles → Aphrodite |
 | M | Toggle whole-map overview |

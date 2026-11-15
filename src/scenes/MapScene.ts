@@ -3,7 +3,7 @@ import { Player } from '../entities/Player';
 import { Npc } from '../entities/Npc';
 import { PLAYER_SKINS } from '../entities/Character';
 import { dialogFor, DialogEntry } from '../data/dialog';
-import { touch, setActionHandler, setShootHandler, showDialog, toast, updateHud } from '../ui';
+import { touch, setActionHandler, setShootHandler, showDialog, toast, updateHud, showVictory, hideVictory } from '../ui';
 import { Enemy } from '../entities/Enemy';
 import { Ship } from '../entities/Ship';
 import { Archery } from '../entities/Archery';
@@ -64,6 +64,18 @@ export interface MapSceneData {
  * Generic Tiled-driven map scene. Layer conventions (see tools/build_map.py, tools/build_cave.py):
  * Ground0..2 tile layers, Objects (tile objects with sortY/z), Collision rects, Spawns (player/npc/sign/chest/door/exit).
  */
+/**
+ * Statue dungeons whose challenge ends with a trip back to the ship: once `boss` (a Spawns name) is defeated (crushed
+ * by the boulder or beaten in battle), its hoard `chest` is collected for you and you're returned to the helm of the
+ * ship on the map you came from. `delay` lets the win play out first (the Cyclops' boulder cutscene runs ~3.2 s).
+ */
+const CHALLENGES: Record<string, { name: string; boss: string; chest: string; delay: number }> = {
+  cyclops: { name: 'The Cave of Polyphemus', boss: 'polyphemus', chest: 'chest_cyclops', delay: 3600 },
+  circe: { name: "Circe's Grotto", boss: 'siren_b', chest: 'chest_circe', delay: 1800 },
+};
+/** how long the VICTORY banner shows before the trip back to the island (ms) */
+const VICTORY_MS = 4200;
+
 export class MapScene extends Phaser.Scene {
   private raw!: TiledMap;
   private player!: Player;
@@ -152,7 +164,7 @@ export class MapScene extends Phaser.Scene {
     );
     // the harbour of the Laestrygonians: you start at the helm and must sail out under the giants' boulders
     this.harbor = prop(this.raw, 'harbor', false) && this.ship
-      ? new Harbor({ scene: this, ship: this.ship, say: (key) => this.say(key), leave: (escaped) => this.leaveHarbor(escaped) }, this.layer('Spawns'))
+      ? new Harbor({ scene: this, ship: this.ship, say: (key) => this.say(key), leave: (escaped, rewards) => this.leaveHarbor(escaped, rewards) }, this.layer('Spawns'))
       : null;
     if (this.harbor) toast(dialogFor('harbor_intro').lines[0], 4200);
 
@@ -174,6 +186,73 @@ export class MapScene extends Phaser.Scene {
     updateHud(this.stats);
     this.events.on('battle-end', this.onBattleEnd, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.events.off('battle-end', this.onBattleEnd, this));
+    this.watchChallenge();
+  }
+
+  // ---------------------------------------------------------------- challenge won: back to the ship
+  /** In a CHALLENGES dungeon whose boss still stands, wait for it to be added to the registry's `defeated` list. */
+  private watchChallenge() {
+    const ch = CHALLENGES[this.scene.key];
+    const bossKey = ch && `${this.scene.key}:${ch.boss}`;
+    const defeated = () => (this.registry.get('defeated') as string[] | undefined) ?? [];
+    if (!ch || defeated().includes(bossKey)) return;
+    // 'setdata' fires the first time `defeated` is set, 'changedata' every time after
+    const onData = (_parent: unknown, key: string) => {
+      if (key !== 'defeated' || !defeated().includes(bossKey)) return;
+      stop();
+      this.challengeWon(ch);
+    };
+    const stop = () => {
+      this.registry.events.off('setdata', onData);
+      this.registry.events.off('changedata', onData);
+    };
+    this.registry.events.on('setdata', onData);
+    this.registry.events.on('changedata', onData);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, stop);
+  }
+
+  /** Let the victory play out, hand over the hoard, show the VICTORY banner, then sail back to the ship by itself. */
+  private challengeWon(ch: { name: string; chest: string; delay: number }) {
+    this.cutscene = true;
+    this.player.frozen = true;
+    this.player.move(0, 0);
+    this.time.delayedCall(ch.delay, () => {
+      if (this.leaving) return;
+      const hoard = this.openChest(ch.chest);
+      // the hoard's text, then its reward line (openChest appends it last)
+      const rewards = hoard ? hoard.lines : [];
+      this.celebrate(ch.name, rewards, () => this.returnToShip());
+    });
+  }
+
+  /**
+   * Every challenge ends here: a golden flash, the VICTORY banner (challenge name + rewards) for VICTORY_MS, then
+   * `then` takes you back to the island. No input while it shows.
+   */
+  private celebrate(name: string, rewards: string[], then: () => void) {
+    if (this.leaving) return;
+    this.cutscene = true;
+    this.player.frozen = true;
+    this.player.move(0, 0);
+    if (this.dialog) { this.dialog = null; this.renderDialog(); }
+    this.registry.set('challengesWon', [...new Set([...((this.registry.get('challengesWon') as string[] | undefined) ?? []), this.scene.key])]);
+    this.cameras.main.flash(500, 255, 224, 140);
+    showVictory(name, rewards, VICTORY_MS);
+    this.time.delayedCall(VICTORY_MS, () => { hideVictory(); then(); });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, hideVictory);
+  }
+
+  /** Leave the dungeon for the map it was entered from, starting at the ship's helm. */
+  private returnToShip() {
+    this.leaving = true;
+    this.player.frozen = true;
+    const target = this.portals.find((p) => p.kind === 'exit')?.target || 'village';
+    const from = (this.registry.get('lastHouse') as string | undefined) ?? '';
+    this.registry.set('statueBy', 'ship'); // arriving back "through" the statue with this set boards the ship
+    this.cameras.main.fadeOut(700, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      this.scene.start(target, { from } as MapSceneData);
+    });
   }
 
   private get stats(): PlayerStats {
@@ -487,27 +566,31 @@ export class MapScene extends Phaser.Scene {
       best.npc.faceTowards(this.player.x, this.player.y);
     }
     let entry = dialogFor(best.dialog);
-    if (best.kind === 'chest') {
-      const opened = (this.registry.get('openedChests') as string[] | undefined) ?? [];
-      if (opened.includes(best.id)) entry = { name: entry.name, lines: ['It is empty.'] };
-      else {
-        this.registry.set('openedChests', [...opened, best.id]);
-        const reward = CHEST_REWARDS[best.id];
-        if (reward) {
-          const st = this.stats;
-          st.potions += reward.potions ?? 0;
-          if (reward.heal) st.hp = st.maxHp;
-          this.registry.set('stats', st);
-          updateHud(st);
-          entry = { name: entry.name, lines: [...entry.lines, `+${reward.potions ?? 0} potions${reward.heal ? ', HP fully restored' : ''}.`] };
-        }
-      }
-    }
+    if (best.kind === 'chest') entry = this.openChest(best.id, best.dialog) ?? { name: entry.name, lines: ['It is empty.'] };
     if (best.kind === 'ship') return this.board();
     if (best.kind === 'statue') return this.openStatue(best, false);
     this.dialog = { entry, line: 0, target: best };
     this.player.frozen = true;
     this.renderDialog();
+  }
+
+  /**
+   * Open a chest for the first time: mark it opened, apply its CHEST_REWARDS, and return its dialog with the reward
+   * line added. Returns null if it was already opened.
+   */
+  private openChest(id: string, dialog = id): DialogEntry | null {
+    const opened = (this.registry.get('openedChests') as string[] | undefined) ?? [];
+    if (opened.includes(id)) return null;
+    this.registry.set('openedChests', [...opened, id]);
+    const entry = dialogFor(dialog);
+    const reward = CHEST_REWARDS[id];
+    if (!reward) return entry;
+    const st = this.stats;
+    st.potions += reward.potions ?? 0;
+    if (reward.heal) st.hp = st.maxHp;
+    this.registry.set('stats', st);
+    updateHud(st);
+    return { name: entry.name, lines: [...entry.lines, `+${reward.potions ?? 0} potions${reward.heal ? ', HP fully restored' : ''}.`] };
   }
 
   // ---------------------------------------------------------------- the ship
@@ -933,8 +1016,10 @@ export class MapScene extends Phaser.Scene {
   }
 
   /** Leave the Laestrygonian harbour: back beside the giant's fist. Wrecked: you wash up on the islet, healed. */
-  private leaveHarbor(escaped: boolean) {
+  private leaveHarbor(escaped: boolean, rewards: string[] = []) {
     if (this.leaving) return;
+    // out of the harbour mouth: the VICTORY banner first, then home
+    if (escaped && !this.cutscene) return this.celebrate('Escape from Telepylus', rewards, () => this.leaveHarbor(true));
     this.leaving = true;
     this.player.frozen = true;
     if (!escaped) {

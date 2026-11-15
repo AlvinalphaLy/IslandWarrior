@@ -51,6 +51,32 @@ export function toast(msg: string, ms = 1800) {
   toastTimer = window.setTimeout(() => (el.style.display = 'none'), ms);
 }
 
+// ---------------------------------------------------------------- victory banner
+/**
+ * A challenge won: a golden VICTORY banner with the challenge's name and rewards, and a bar filling over `ms` while
+ * the game waits to take you back to the island. Call hideVictory() when leaving.
+ */
+export function showVictory(name: string, rewards: string[], ms: number) {
+  const el = document.getElementById('victory')!;
+  el.querySelector('.sub')!.textContent = name;
+  el.querySelector('ul')!.innerHTML = rewards.map((r) => `<li>${r.replace(/[<&]/g, (c) => (c === '<' ? '&lt;' : '&amp;'))}</li>`).join('');
+  const bar = el.querySelector<HTMLElement>('.bar i')!;
+  bar.style.transition = 'none';
+  bar.style.width = '0';
+  el.style.display = 'block';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    el.classList.add('show');
+    bar.style.transition = `width ${ms}ms linear`;
+    bar.style.width = '100%';
+  }));
+}
+
+export function hideVictory() {
+  const el = document.getElementById('victory')!;
+  el.classList.remove('show');
+  window.setTimeout(() => { if (!el.classList.contains('show')) el.style.display = 'none'; }, 400);
+}
+
 // ---------------------------------------------------------------- HUD (level / HP / potions)
 export function updateHud(s: PlayerStats) {
   const el = document.getElementById('hud')!;

@@ -30,8 +30,8 @@ export interface HarborHost {
   ship: Ship;
   /** open a dialog by key */
   say: (key: string) => void;
-  /** leave the harbour: escaped (true) or wrecked (false) */
-  leave: (escaped: boolean) => void;
+  /** leave the harbour: escaped (true, with the reward lines for the VICTORY banner) or wrecked (false) */
+  leave: (escaped: boolean, rewards?: string[]) => void;
 }
 
 export class Harbor {
@@ -141,16 +141,15 @@ export class Harbor {
     const s = this.scene;
     const unlocks = (s.registry.get('unlocks') as string[] | undefined) ?? [];
     const st: PlayerStats = { ...START_STATS, ...(s.registry.get('stats') as PlayerStats | undefined) };
+    const rewards = ['Out of the harbour mouth! The giants roar from the cliffs.'];
     if (!unlocks.includes('laestrygonians')) {
       s.registry.set('unlocks', [...unlocks, 'laestrygonians']);
       st.gold = (st.gold ?? 0) + 60;
       st.potions += 1;
       s.registry.set('stats', st);
       updateHud(st);
-      toast('Out of the harbour! The giants roar from the cliffs. +60 gold, +1 ambrosia', 3000);
-    } else {
-      toast('Out of the harbour again! The giants roar from the cliffs.', 2600);
+      rewards.push('+60 gold, +1 ambrosia');
     }
-    s.time.delayedCall(600, () => this.host.leave(true));
+    this.host.leave(true, rewards);
   }
 }
