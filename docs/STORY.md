@@ -50,7 +50,7 @@ The existing Polyphemus dungeon can support a later Cyclops episode. These rows 
 
 `src/data/voyage.ts` contains the script cards by trigger. `src/story/state.ts` defines pure event progression and objective text. `src/story/index.ts` writes progress to Phaser's `odysseyVoyage` registry key and publishes `voyage-story` on the scene plus `odyssey:story` on `window`.
 
-**No homepage, journal, choice panel, portrait layout or automatic narration modal is created by these hooks.** The former seven-NPC checklist and sidebar are retired. Your teammate owns the presentation.
+**The existing voiced popup now consumes these story hooks in the game.** Boarding and island milestones automatically display their queued cards, pause the map and speak the matching ElevenLabs audio. There is no new homepage, journal or choice panel. The former seven-NPC checklist and sidebar are retired. The presentation adapter is isolated in `src/story/playback.ts` so your teammate can replace it.
 
 Every cue contains `{ key, cards, progress, objective }`. A persistent queue in `odysseyStoryQueue` keeps cues from getting lost during a scene transition. The UI should consume the queue once and present its cards in order. Subscribe to the global event as a wake-up signal, rather than displaying both the event payload and queue independently.
 
@@ -65,7 +65,7 @@ const cues = takeVoyageCues(scene);
 // Your UI queues cues.flatMap(cue => cue.cards) and owns scene pause/resume.
 ```
 
-The existing approved `showNarration` component is available if desired; it is not automatically mounted in the game. Its presentation may be replaced by the teammate. Register/unregister the global listener with the UI lifecycle. If a modal is used, pause the appropriate map and clear held input so enemies and ship movement do not continue behind it.
+The approved `showNarration` component is mounted automatically by the playback adapter. It waits for ordinary dialogue, battles and fades to finish before pausing the map. Its presentation may be replaced by the teammate. Register/unregister the global listener with the UI lifecycle. If a modal is used, pause the appropriate map and clear held input so enemies and ship movement do not continue behind it.
 
 ### Actual game hooks
 
@@ -80,7 +80,7 @@ Repeated boarding, kills, chest interactions and scene callbacks do not duplicat
 
 ## Voice production
 
-The new boat-first script is the `voyage` narration group. Old trainer and homecoming clips are preserved as assets but are not used by the new game hooks. The new text must not play an old clip with different words.
+The new boat-first script is the `voyage` narration group. Old trainer and homecoming clips are preserved as assets but are not used by the new game hooks. All 12 new boat-first clips have been generated with ElevenLabs and are cached locally. The new text does not play an old clip with different words.
 
 ```sh
 npm run voices -- --dry-run --only=voyage
@@ -88,8 +88,10 @@ npm run voices -- --dry-run --only=voyage
 npm run voices -- --only=voyage
 ```
 
-Until generated, the new cards use the established text-only fallback if the UI owner plays them through the narration component. No additional voice accounts are required; the script uses the existing narrator and Oracle roles.
+If a clip fails to load or playback is blocked, the popup keeps its captions and replay/mute controls. No additional voice accounts are required; the script uses the existing narrator and Oracle roles.
 
 ## Checks
 
-`npm run test:integrations` tests voyage order, idempotence, choices and early/out-of-order events. `npm run smoke:story` checks boarding, actual Circe scene entry, a real battle victory, chest recovery and reboarding with queued story cards. The upstream gameplay smoke separately checks ship controls, collision, Circe transitions and Greek combat. `npm run build` verifies the combined source.
+`npm run test:integrations` tests voyage order, idempotence, choices and early/out-of-order events. `npm run smoke:story` checks boarding, actual Circe scene entry, a real battle victory, chest recovery and reboarding with visible story cards, audible playback readiness, paused ship movement and queue draining. The upstream gameplay smoke separately checks ship controls, collision, Circe transitions and Greek combat. `npm run build` verifies the combined source.
+
+For manual testing, run `npm run dev`, open `/`, approach the black ship and press E. The first voiced story popup appears after boarding. E/Space reveals a line, then advances; Escape skips the current batch. Use the speaker button if narration was previously muted. `?story=off` disables automatic playback for low-level gameplay smoke tests.

@@ -201,5 +201,89 @@
     "provider": "ElevenLabs",
     "model": "eleven_multilingual_v2",
     "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "voyage_departure_1": {
+    "hash": "3fac4c7989def2f8030df6678b8c3c206f1dff47ca7fcccd93290b06fbaa79f7",
+    "file": "voyage_departure_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "voyage_departure_2": {
+    "hash": "938a4412546eccafb2b45505705a154eea917150714ebee4f7cd73ef1691aeb4",
+    "file": "voyage_departure_2.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "voyage_landfall_1": {
+    "hash": "c0b32a6818e3047e0dceae8b1653d927282fa86b76d81bf14ab4d6831e1d8ab1",
+    "file": "voyage_landfall_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "voyage_food_1": {
+    "hash": "e0270f727e67db3215d405cec57cfebbc19fea0bf65936e443878ea2426cfc6e",
+    "file": "voyage_food_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "voyage_treasure_1": {
+    "hash": "fe0f7e150d69aa4cbf50e60370c8455270d5e84f91cb08eba052fc3f84906286",
+    "file": "voyage_treasure_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "voyage_challenge_1": {
+    "hash": "a173bb0ac8c3814237e92eb85697b29fee1deab49d2ad1960b12f1ce3cff14bb",
+    "file": "voyage_challenge_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "voyage_challenge_2": {
+    "hash": "a92e5d661a656cfa73e826ecabf05a166acf22bd0445d2d96f1bd0c54b789478",
+    "file": "voyage_challenge_2.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "voyage_first_victory_1": {
+    "hash": "dfce97c33dacbc248f9130269b3ccd4e4972e8ee00ec4d5083dd0027500b6aea",
+    "file": "voyage_first_victory_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "voyage_moly_1": {
+    "hash": "ea7cf0b304778f417a1741f54a14855ef1539d1c330fa5a80605b0f2c610b835",
+    "file": "voyage_moly_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "voyage_moly_2": {
+    "hash": "b43e29cfdf9fc8fad41684b4040a8a970c92039075f10fda8735b673bf54ed58",
+    "file": "voyage_moly_2.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "voyage_departure_aeaea_1": {
+    "hash": "47fc8cca665ce64e87764d7636baa93c0b62e40214aa089927d8ad2eea75dc4d",
+    "file": "voyage_departure_aeaea_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "voyage_departure_aeaea_2": {
+    "hash": "5f213d6b6c69a5322e3026befaa3359e4cc88b0675290ebcaa89c4ce8d8d3daa",
+    "file": "voyage_departure_aeaea_2.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "OZ0L6eISlOejga3XjDFt"
   }
 }

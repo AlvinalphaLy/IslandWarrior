@@ -3,7 +3,7 @@
 import puppeteer from 'puppeteer-core';
 const CHROME = process.env.CHROME || 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 // ?canvas: headless Chrome's software WebGL is flaky, the Canvas renderer is deterministic
-const URL = process.env.URL || 'http://localhost:5173/?canvas';
+const URL = process.env.URL || 'http://localhost:5173/?canvas&story=off';
 const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new' });
 const page = await browser.newPage();
 await page.setViewport({ width: 1440, height: 810 });

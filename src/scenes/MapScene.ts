@@ -1,3 +1,4 @@
+import { installVoyagePlayback, voyagePlaybackBlocks } from '../story/playback';
 import { publishVoyageEvent } from '../story';
 import Phaser from 'phaser';
 import { Player } from '../entities/Player';
@@ -192,6 +193,12 @@ export class MapScene extends Phaser.Scene {
     this.events.on('battle-end', this.onBattleEnd, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () =>
       this.events.off('battle-end', this.onBattleEnd, this),
+    );
+    // The shared popup consumes story events only after normal dialogue and transitions finish.
+    installVoyagePlayback(
+      this,
+      () =>
+        !!this.dialog || this.inBattle || this.leaving || this.cameras.main.fadeEffect.isRunning,
     );
   }
 
@@ -407,6 +414,7 @@ export class MapScene extends Phaser.Scene {
   // ---------------------------------------------------------------- battles
   private startBattle(enemy: Enemy) {
     if (
+      voyagePlaybackBlocks(this) ||
       this.inBattle ||
       this.leaving ||
       this.time.now < this.safeUntil ||
@@ -523,6 +531,7 @@ export class MapScene extends Phaser.Scene {
   }
 
   private interact() {
+    if (voyagePlaybackBlocks(this) && !this.dialog) return;
     if (this.leaving) return;
     if (this.dialog) return this.advanceDialog();
     if (this.sailing) {

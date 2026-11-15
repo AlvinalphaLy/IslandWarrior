@@ -17,7 +17,27 @@ try {
   const page = await browser.newPage();
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
+  await page.evaluateOnNewDocument(() => {
+    window.__storyBeats = [];
+    window.addEventListener('odyssey:story', (event) => window.__storyBeats.push(event.detail.key));
+  });
   await page.goto(`http://127.0.0.1:${server.address().port}/?canvas`);
+
+  /** Exercise the visible popup, including real audio and scene pausing, before returning to gameplay. */
+  async function finishStory(expectAudio = false) {
+    await page.waitForSelector('.narration-panel');
+    if (expectAudio) {
+      await page.waitForFunction(
+        () => document.querySelector('.narration-state').textContent === 'Speaking…',
+      );
+    }
+    for (let i = 0; i < 18 && (await page.$('.narration-panel')); i++) {
+      await page.click('.narration-continue');
+      await pause(70);
+    }
+    assert.equal(await page.$('.narration-panel'), null);
+    await pause(150);
+  }
   await page.waitForFunction(() => window.game?.scene.getScene('village')?.ship);
   assert.equal(await page.$('#story-widget'), null);
 
@@ -30,7 +50,14 @@ try {
     await page.evaluate(() => window.game.registry.get('odysseyVoyage').stage),
     'sailing',
   );
-  assert.equal(await page.$('.narration-panel'), null); // Story hooks do not create teammate-owned UI.
+  await page.waitForSelector('.narration-panel');
+  assert.equal(await page.evaluate(() => window.game.scene.isPaused('village')), true);
+  const before = await page.evaluate(() => window.game.scene.getScene('village').ship.pos.x);
+  await page.keyboard.down('d');
+  await pause(250);
+  await page.keyboard.up('d');
+  assert.equal(await page.evaluate(() => window.game.scene.getScene('village').ship.pos.x), before);
+  await finishStory(true);
 
   // Enter Circe's existing sanctuary from the ship through the real transition code.
   await page.evaluate(() => {
@@ -44,6 +71,8 @@ try {
     await page.evaluate(() => window.game.registry.get('odysseyVoyage').stage),
     'grotto',
   );
+
+  await finishStory(true);
 
   // Only accepted battle outcomes should emit the victory beat.
   await page.evaluate(() => {
@@ -68,6 +97,8 @@ try {
     { timeout: 12000 },
   );
 
+  await finishStory(true);
+
   // Recover the existing chest through interaction, keeping its original inventory rewards.
   await page.evaluate(() => {
     const scene = window.game.scene.getScene('circe');
@@ -84,12 +115,23 @@ try {
     await page.evaluate(() => window.game.registry.get('openedChests').includes('chest_circe')),
   );
 
+  // Close the ordinary chest dialogue before its queued voiced story takes over.
+  for (
+    let i = 0;
+    i < 8 && (await page.evaluate(() => !!window.game.scene.getScene('circe').dialog));
+    i++
+  ) {
+    await page.keyboard.press('e');
+    await pause(80);
+  }
+  await finishStory(true);
+
   // Returning via the existing statue landing quietly boards the player and finishes this island only.
   await page.evaluate(() => window.game.scene.start('village', { from: 'circe_statue' }));
   await page.waitForFunction(() => window.game.registry.get('odysseyVoyage').stage === 'complete');
-  const beats = await page.evaluate(() =>
-    window.game.registry.get('odysseyStoryQueue').map((cue) => cue.key),
-  );
+  await finishStory(true);
+  const beats = await page.evaluate(() => window.__storyBeats);
+  assert.equal(await page.evaluate(() => window.game.registry.get('odysseyStoryQueue').length), 0);
   assert.ok(beats.includes('voyage_departure'));
   assert.ok(beats.includes('voyage_landfall'));
   assert.ok(beats.includes('voyage_challenge'));
@@ -98,7 +140,7 @@ try {
   assert.equal(new Set(beats).size, beats.length);
   assert.deepEqual(errors, []);
   console.log(
-    'Voyage smoke passed: board, island entry, real victory, moly chest, return to ship, queued dialogue, no new UI.',
+    'Voyage smoke passed: board, island entry, real victory, moly chest, return to ship, visible voiced popups, paused movement and drained dialogue queue.',
   );
 } finally {
   await browser?.close();
