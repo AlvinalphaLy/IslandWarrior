@@ -9,6 +9,17 @@ export function setActionHandler(fn: () => void) {
   actionHandler = fn;
 }
 
+let weatherHandler: () => void = () => {};
+/** the Night/Day button (toggles the night storm, like N) */
+export function setWeatherHandler(fn: () => void) {
+  weatherHandler = fn;
+}
+/** label the button with what it switches TO */
+export function setWeatherButton(night: boolean) {
+  const b = document.getElementById('weather');
+  if (b) b.textContent = night ? '☀️ Day' : '🌙 Night';
+}
+
 let shootHandler: () => void = () => {};
 /** the touch "bow" button (shoots, like F) */
 export function setShootHandler(fn: () => void) {
@@ -26,6 +37,7 @@ export function initUi() {
   });
   document.getElementById('act')?.addEventListener('pointerdown', (e) => { e.preventDefault(); actionHandler(); });
   document.getElementById('bow')?.addEventListener('pointerdown', (e) => { e.preventDefault(); shootHandler(); });
+  document.getElementById('weather')?.addEventListener('click', (e) => { e.preventDefault(); (e.currentTarget as HTMLElement).blur(); weatherHandler(); });
   const dlg = document.getElementById('dialog')!;
   dlg.style.pointerEvents = 'auto';
   dlg.addEventListener('pointerdown', () => actionHandler());

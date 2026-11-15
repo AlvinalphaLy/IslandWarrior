@@ -3,11 +3,12 @@ import { Player } from '../entities/Player';
 import { Npc } from '../entities/Npc';
 import { PLAYER_SKINS } from '../entities/Character';
 import { dialogFor, DialogEntry } from '../data/dialog';
-import { touch, setActionHandler, setShootHandler, showDialog, toast, updateHud, showVictory, hideVictory } from '../ui';
+import { touch, setActionHandler, setShootHandler, setWeatherHandler, setWeatherButton, showDialog, toast, updateHud, showVictory, hideVictory } from '../ui';
 import { Enemy } from '../entities/Enemy';
 import { Ship } from '../entities/Ship';
 import { Archery } from '../entities/Archery';
 import { Harbor } from '../entities/Harbor';
+import { Weather } from '../entities/Weather';
 import { CHEST_REWARDS, ENEMIES, FX_FRAME, PlayerStats, START_STATS } from '../data/enemies';
 import type { BattleData, BattleResult } from './BattleScene';
 
@@ -104,6 +105,8 @@ export class MapScene extends Phaser.Scene {
   /** ship name -> where the player lands when sailing back to this map */
   private shipLandings: Record<string, Phaser.Math.Vector2> = {};
   private vignette: Phaser.GameObjects.Image | null = null;
+  /** night storm: rain, wind, lightning on outdoor maps (Weather.ts; N or the Night/Day button) */
+  private weather: Weather | null = null;
   /** the sailable ship (village only), its interactable, and the talk area relative to its waterline centre */
   private ship: Ship | null = null;
   /** Odysseus' bow: arrows, targets, gates, axes and sheep (Spawns of those types; see Archery.ts) */
@@ -188,6 +191,9 @@ export class MapScene extends Phaser.Scene {
     if (prop(this.raw, 'dark', false)) {
       this.vignette = this.add.image(0, 0, 'vignette').setOrigin(0).setScrollFactor(0).setDepth(9000).setDisplaySize(cam.width, cam.height);
     }
+    // the night storm (outdoors only: maps with `dark` are caves and grottos), lit around the player or the ship
+    this.weather = new Weather(this, !prop(this.raw, 'dark', false), () => (this.sailing && this.ship ? this.ship.pos : this.player));
+    setWeatherButton(this.weather.enabled);
 
     this.debugGfx = this.add.graphics().setDepth(10000).setVisible(false);
     this.setupInput();
@@ -513,6 +519,7 @@ export class MapScene extends Phaser.Scene {
       ['keydown-M', () => this.toggleOverview()],
       ['keydown-C', () => this.cycleSkin()],
       ['keydown-F', () => this.shoot()],
+      ['keydown-N', () => this.toggleWeather()],
       ['keydown-F1', () => { this.debugOn = !this.debugOn; this.debugGfx.setVisible(this.debugOn); }],
     ];
     // After a restart Phaser 3.80's keyboard plugin can also deliver the same DOM event twice, so act once per event
@@ -523,12 +530,21 @@ export class MapScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { for (const [ev, fn] of handlers) kb.off(ev, fn); });
     setActionHandler(() => this.interact());
     setShootHandler(() => this.shoot());
+    setWeatherHandler(() => this.toggleWeather());
   }
 
   /** F (or the bow button): shoot an arrow, once Odysseus has found his bow. */
   private shoot() {
     if (this.dialog || this.leaving || this.cutscene || this.sailing || this.inBattle) return;
     this.archery?.shoot(this.time.now);
+  }
+
+  /** N / the Night-Day button: the night storm on or off (remembered across maps and visits). */
+  private toggleWeather() {
+    if (!this.weather || this.leaving) return;
+    const night = this.weather.toggle();
+    setWeatherButton(night);
+    toast(night ? 'Night falls. A storm rolls in over Ithaca...' : 'Dawn. The storm passes.', 2000);
   }
 
   /** Open a dialog by key (used by Archery for the bow). */
@@ -1168,6 +1184,7 @@ export class MapScene extends Phaser.Scene {
     this.ship?.update(time);
     this.archery?.update(time, delta);
     this.harbor?.update(time, delta);
+    this.weather?.update(time);
     for (const n of this.npcs) n.update(time, delta);
     for (const e of this.enemies) e.update(time, this.player);
     if (!this.sailing) this.checkPortals();
