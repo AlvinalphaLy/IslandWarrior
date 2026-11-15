@@ -92,6 +92,12 @@ const shipState = () => page.evaluate(() => {
     player: { x: Math.round(s.player.x), y: Math.round(s.player.y), visible: s.player.visible },
     toast: document.getElementById('toast').innerText, scene: window.game.scene.getScenes(true).map((x) => x.scene.key).join(',') };
 });
+// Kai wanders this beach; park him up the beach so E boards the ship instead of talking to him
+const parkKai = () => page.evaluate(() => {
+  const k = window.game.scene.getScene('village').npcs.find((n) => n.displayName === 'Kai');
+  k.talking = true; k.setPosition(380, 215); k.body.reset(380, 215); k.setPosition(380, 215);
+});
+await parkKai();
 await page.evaluate(() => {
   const s = window.game.scene.getScene('village');
   s.player.setPosition(330, 272); s.player.face('right');
@@ -177,6 +183,7 @@ for (const y of [224, 232, 240]) {
 const pier = await walkFrom(112, 276, 'KeyS', 2600);
 console.log('pier:', pier, pier.y > 340 ? 'OK' : 'FAIL');
 // villagers must never wander into walls (they used to walk through rocks: immovable bodies ignore static colliders)
+await page.evaluate(() => window.game.scene.getScene('village').npcs.forEach((n) => { n.talking = false; n.body.enable = true; }));
 const inWalls = [];
 for (let i = 0; i < 16; i++) {
   await new Promise((r) => setTimeout(r, 400));
@@ -193,6 +200,66 @@ for (let i = 0; i < 16; i++) {
   }));
 }
 console.log('villagers stay out of walls:', inWalls.length ? inWalls.slice(0, 5) : 'none', inWalls.length ? 'FAIL' : 'OK');
+// Circe's statue on the islet: sail up to it and press E -> her grotto; the ladder brings you back to the helm
+await parkKai();
+await page.evaluate(() => {
+  const s = window.game.scene.getScene('village');
+  s.player.setPosition(330, 272); s.player.face('right');
+});
+await new Promise((r) => setTimeout(r, 200));
+await tap('KeyE'); // board
+await page.evaluate(() => window.game.scene.getScene('village').ship.pos.set(318, 350)); // just south of the islet
+await new Promise((r) => setTimeout(r, 300));
+await page.screenshot({ path: 'cache/shot_statue.png' });
+await tap('KeyE');
+const statueDlg = await page.evaluate(() => document.querySelector('#dialog .name').textContent);
+console.log('statue from the ship:', statueDlg, statueDlg.includes('Circe') ? 'OK' : 'FAIL');
+await tap('KeyE'); await tap('KeyE');
+await new Promise((r) => setTimeout(r, 1300));
+const grotto = await active();
+console.log('enter the grotto:', grotto, grotto === 'circe' ? 'OK' : 'FAIL');
+await page.screenshot({ path: 'cache/shot_grotto.png' });
+const climbOut = async (scene) => {
+  await page.evaluate((scene) => {
+    const s = window.game.scene.getScene(scene); const e = s.portals.find((p) => p.kind === 'exit');
+    s.player.setPosition(e.rect.centerX, e.rect.bottom + 10); s.player.face('up');
+  }, scene);
+  await new Promise((r) => setTimeout(r, 200));
+  await page.keyboard.down('KeyW'); await new Promise((r) => setTimeout(r, 1500)); await page.keyboard.up('KeyW');
+  await new Promise((r) => setTimeout(r, 600));
+};
+await climbOut('circe');
+const helm = await shipState();
+console.log('back at the helm by the islet:', JSON.stringify(helm), helm.scene === 'village' && helm.sailing && helm.x === 318 && helm.y === 350 ? 'OK' : 'FAIL');
+// on foot: land on the islet, walk up to the statue, E -> grotto -> back beside the statue
+await tap('KeyE'); // the statue is in reach of the ship, so this opens it again; close without entering is not possible,
+await tap('KeyE'); await tap('KeyE');
+await new Promise((r) => setTimeout(r, 1300));
+await climbOut('circe');
+await page.evaluate(() => {
+  const s = window.game.scene.getScene('village');
+  // step off onto the islet as if landed, face the statue
+  s.sailing = false; s.player.body.enable = true; s.player.setVisible(true); s.player.frozen = false;
+  s.ship.pos.set(406, 292); // park the ship back at its mooring, out of the way
+  document.querySelector('#dialog .name').textContent = '';
+  s.player.setPosition(288, 335); s.player.body.reset(288, 335); s.player.setPosition(288, 335); s.player.face('right');
+  s.cameras.main.startFollow(s.player);
+});
+await new Promise((r) => setTimeout(r, 200));
+await tap('KeyE');
+const footDlg = await page.evaluate(() => document.querySelector('#dialog .name').textContent);
+await tap('KeyE'); await tap('KeyE');
+await new Promise((r) => setTimeout(r, 1300));
+const grotto2 = await active();
+console.log('statue on foot:', footDlg, grotto2, footDlg.includes('Circe') && grotto2 === 'circe' ? 'OK' : 'FAIL');
+await climbOut('circe');
+const foot = await shipState();
+console.log('back on the islet on foot:', JSON.stringify(foot.player), foot.scene === 'village' && !foot.sailing && foot.player.visible && Math.abs(foot.player.x - 286) < 6 && Math.abs(foot.player.y - 335) < 6 ? 'OK' : 'FAIL');
+// campfire: the fire and its log seats are one block; the white bushes below block too
+const campfire = await walkFrom(431, 172, 'KeyW', 900);
+console.log('campfire blocks (no slipping between the logs):', campfire, campfire.y >= 165 ? 'OK' : 'FAIL');
+const bushes = await walkFrom(440, 166, 'KeyS', 900);
+console.log('white bushes block:', bushes, bushes.y <= 181 ? 'OK' : 'FAIL');
 // dungeon: house_0 (red house, left) -> Telemachus training room
 await page.evaluate(() => {
   const s = window.game.scene.getScene('village'); const d = s.portals.find((p) => p.id === 'house_0');

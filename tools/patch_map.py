@@ -103,6 +103,10 @@ for k, o in enumerate(objs):
 
 ref_full = np.asarray(Image.open(REF).convert('RGBA'))
 ref = ref_full[::2, ::2].copy(); ref[..., 3] = 255
+
+# areas build_map.py emptied on purpose (clearedAreas: the islet) are rebuilt from tiles there, so never copied
+# from the reference (which still shows the tree and flowers)
+BAKED_ACTORS = BAKED_ACTORS + [tuple(a) for a in json.loads(next((p['value'] for p in m.get('properties', []) if p['name'] == 'clearedAreas'), '[]'))]
 diff = (canvas[..., :3] != ref[..., :3]).any(-1)
 for x0, y0, x1, y1 in BAKED_ACTORS:
     diff[y0:y1, x0:x1] = False

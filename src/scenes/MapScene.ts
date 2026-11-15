@@ -27,9 +27,9 @@ const prop = <T>(o: { properties?: TiledProp[] }, key: string, def: T): T =>
   (o.properties?.find((p) => p.name === key)?.value as T) ?? def;
 
 interface Interactable {
-  kind: 'npc' | 'sign' | 'chest' | 'ship';
+  kind: 'npc' | 'sign' | 'chest' | 'ship' | 'statue';
   rect: Phaser.Geom.Rectangle; npc?: Npc; dialog: string; id: string;
-  /** ship only: scene to sail to, and the unlock it needs (registry 'unlocks') */
+  /** ship / statue: scene it leads to; ship only: the unlock it needs (registry 'unlocks') */
   target?: string; requires?: string;
 }
 /** A door (village houses) or exit (cave ladder): walking up into it moves to `target`. */
@@ -69,6 +69,10 @@ export class MapScene extends Phaser.Scene {
   private shipTalk = new Phaser.Geom.Rectangle();
   private sailing = false;
   private edgeToastAt = 0;
+  /** statues that lead somewhere (Circe's): where they stand and where you reappear on foot */
+  private statues: { it: Interactable; x: number; y: number; arrive: Phaser.Math.Vector2 }[] = [];
+  /** coming back from a statue's dungeon by ship: start at the helm */
+  private boardOnStart = false;
   private inBattle = false;
   /** the player can't start another battle until this time (after running away) */
   private safeUntil = 0;
@@ -92,6 +96,8 @@ export class MapScene extends Phaser.Scene {
     this.ship = null;
     this.shipIt = null;
     this.sailing = false;
+    this.statues = [];
+    this.boardOnStart = false;
     this.vignette = null;
     this.inBattle = false;
     this.safeUntil = 0;
@@ -116,6 +122,7 @@ export class MapScene extends Phaser.Scene {
     cam.startFollow(this.player, true, 0.15, 0.15);
     cam.setRoundPixels(true);
     cam.fadeIn(300, 0, 0, 0);
+    if (this.boardOnStart) this.board(true);
     if (prop(this.raw, 'dark', false)) {
       this.vignette = this.add.image(0, 0, 'vignette').setOrigin(0).setScrollFactor(0).setDepth(9000).setDisplaySize(cam.width, cam.height);
     }
@@ -225,11 +232,24 @@ export class MapScene extends Phaser.Scene {
         if (a.length === 2) this.shipLandings[s.name] = new Phaser.Math.Vector2(a[0], a[1]);
       } else if (s.type === 'statue') {
         // a prop image standing on (x, y) = bottom centre of its base; the base blocks movement and can be read with E
+        // optional: `aura` wraps it in black smoke; `target` makes E take you into that scene (from the shore or the ship)
         const fw = prop(s, 'footW', 28), fh = prop(s, 'footH', 8);
-        this.add.image(s.x, s.y, prop(s, 'sprite', 'horse_statue')).setOrigin(0.5, 1).setDepth(s.y - fh / 2);
+        const key = prop(s, 'sprite', 'horse_statue');
+        const statue = this.add.sprite(s.x, s.y, key).setOrigin(0.5, 1).setDepth(s.y - fh / 2);
+        if (this.anims.exists(`${key}-idle`)) statue.play(`${key}-idle`);
+        if (prop(s, 'aura', false)) this.addAura(statue);
         this.walls.add(this.add.zone(s.x, s.y - 1 - fh / 2, fw, fh));
         const dialog = prop(s, 'dialog', '');
-        if (dialog) this.interactables.push({ kind: 'sign', rect: new Phaser.Geom.Rectangle(s.x - fw / 2, s.y - fh - 1, fw, fh + 1), dialog, id: s.name });
+        const target = prop(s, 'target', '');
+        const rect = new Phaser.Geom.Rectangle(s.x - fw / 2, s.y - fh - 1, fw, fh + 1);
+        if (target) {
+          const it: Interactable = { kind: 'statue', rect, dialog, id: s.name, target };
+          this.interactables.push(it);
+          const a = prop(s, 'arrive', '').split(',').map(Number);
+          this.statues.push({ it, x: s.x, y: s.y, arrive: new Phaser.Math.Vector2(a.length === 2 ? a[0] : s.x, a.length === 2 ? a[1] : s.y + 10) });
+        } else if (dialog) {
+          this.interactables.push({ kind: 'sign', rect, dialog, id: s.name });
+        }
       } else if (s.type === 'sign' || s.type === 'chest') {
         this.interactables.push({ kind: s.type, rect, dialog: prop(s, 'dialog', ''), id: s.name });
       } else if (s.type === 'door' || s.type === 'exit') {
@@ -250,6 +270,12 @@ export class MapScene extends Phaser.Scene {
     // sailing home: step off onto the shore, looking at the ship
     const landing = this.arrival.from ? this.shipLandings[this.arrival.from] : undefined;
     if (!via && landing) start = { x: landing.x, y: landing.y, sprite, face: 'down' };
+    // back from a statue's dungeon: on foot beside the statue, or at the helm if you came by ship
+    const viaStatue = this.statues.find((st) => st.it.id === this.arrival.from);
+    if (viaStatue) {
+      start = { x: viaStatue.arrive.x, y: viaStatue.arrive.y, sprite, face: 'down' };
+      this.boardOnStart = this.registry.get('statueBy') === 'ship' && !!this.ship;
+    }
     this.player = new Player(this, start!.x, start!.y, sprite);
     this.player.face(start!.face);
 
@@ -348,7 +374,10 @@ export class MapScene extends Phaser.Scene {
   private interact() {
     if (this.leaving) return;
     if (this.dialog) return this.advanceDialog();
-    if (this.sailing) return this.goAshore();
+    if (this.sailing) {
+      const st = this.statueInReach();
+      return st ? this.openStatue(st, true) : this.goAshore();
+    }
     const p = this.player.probe;
     let best: Interactable | null = null;
     let bestD = 14;
@@ -360,7 +389,9 @@ export class MapScene extends Phaser.Scene {
         const t = new Phaser.Geom.Rectangle(this.ship.pos.x + this.shipTalk.x, this.ship.pos.y + this.shipTalk.y, this.shipTalk.width, this.shipTalk.height);
         Phaser.Geom.Rectangle.Union(h, t, it.rect);
       }
-      const d = Phaser.Math.Distance.Between(p.x, p.y, Phaser.Math.Clamp(p.x, it.rect.left, it.rect.right), Phaser.Math.Clamp(p.y, it.rect.top, it.rect.bottom));
+      // the ship's boarding area is big; anything else in reach (a statue, a villager) wins over boarding
+      const d = Phaser.Math.Distance.Between(p.x, p.y, Phaser.Math.Clamp(p.x, it.rect.left, it.rect.right), Phaser.Math.Clamp(p.y, it.rect.top, it.rect.bottom))
+        + (it.kind === 'ship' ? 8 : 0);
       if (d < bestD) { bestD = d; best = it; }
     }
     if (!best) return;
@@ -386,6 +417,7 @@ export class MapScene extends Phaser.Scene {
       }
     }
     if (best.kind === 'ship') return this.board();
+    if (best.kind === 'statue') return this.openStatue(best, false);
     this.dialog = { entry, line: 0, target: best };
     this.player.frozen = true;
     this.renderDialog();
@@ -393,7 +425,7 @@ export class MapScene extends Phaser.Scene {
 
   // ---------------------------------------------------------------- the ship
   /** Climb aboard: the player goes onto the deck and the arrow keys steer the ship. */
-  private board() {
+  private board(quiet = false) {
     if (!this.ship) return;
     this.sailing = true;
     this.player.frozen = true;
@@ -401,7 +433,83 @@ export class MapScene extends Phaser.Scene {
     this.player.setVisible(false);
     (this.player.body as Phaser.Physics.Arcade.Body).enable = false;
     if (!this.overview) this.cameras.main.startFollow(this.ship.sprite, true, 0.08, 0.08);
-    toast(dialogFor('ship_board').lines[0], 3200);
+    if (!quiet) toast(dialogFor('ship_board').lines[0], 3200);
+  }
+
+  /** Remember where the ship is, so it's still there after visiting another map. */
+  private saveShip() {
+    if (!this.ship || !this.shipIt) return;
+    const ships = (this.registry.get('ships') as Record<string, unknown> | undefined) ?? {};
+    this.registry.set('ships', { ...ships, [`${this.scene.key}:${this.shipIt.id}`]: { x: this.ship.pos.x, y: this.ship.pos.y, left: this.ship.facingLeft } });
+  }
+
+  // ---------------------------------------------------------------- statues with a dungeon (Circe's)
+  /** A statue close enough to the ship's hull to step onto from the deck. */
+  private statueInReach() {
+    if (!this.ship) return null;
+    const h = this.ship.hull;
+    return this.statues.find((st) => Phaser.Math.Distance.Between(st.x, st.y - 8,
+      Phaser.Math.Clamp(st.x, h.x, h.right), Phaser.Math.Clamp(st.y - 8, h.y, h.bottom)) <= 30)?.it ?? null;
+  }
+
+  /** Read the statue's lines; closing them takes you into its dungeon. */
+  private openStatue(it: Interactable, byShip: boolean) {
+    this.dialog = { entry: dialogFor(it.dialog), line: 0, target: it, onClose: () => this.enterStatue(it, byShip) };
+    this.player.frozen = true;
+    this.renderDialog();
+  }
+
+  private enterStatue(it: Interactable, byShip: boolean) {
+    if (!it.target || !this.scene.get(it.target)) return toast('The black smoke thins. The way is sealed.', 2200);
+    this.leaving = true;
+    this.player.frozen = true;
+    this.registry.set('lastHouse', it.id); // exits in the dungeon come back "through" the statue
+    this.registry.set('statueBy', byShip ? 'ship' : 'foot');
+    if (byShip) this.saveShip();
+    this.cameras.main.fadeOut(700, 12, 0, 20);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      this.scene.start(it.target!, { from: it.id } as MapSceneData);
+    });
+  }
+
+  /**
+   * Black aura: a soft black glow hugging the statue's silhouette, a dark pool at its feet and black-violet wisps
+   * rising around it. Textures are made here (no tinting), so it looks the same in WebGL and Canvas.
+   */
+  private addAura(statue: Phaser.GameObjects.Sprite) {
+    const key = statue.texture.key;
+    const glowKey = `${key}__aura`;
+    const pad = 10;
+    const f = this.textures.getFrame(key, 0);
+    if (!this.textures.exists(glowKey)) {
+      const c = this.textures.createCanvas(glowKey, f.width + pad * 2, f.height + pad * 2)!;
+      const ctx = c.getContext();
+      const src = f.source.image as CanvasImageSource;
+      ctx.shadowColor = '#000'; ctx.shadowBlur = 6;
+      for (let i = 0; i < 4; i++) ctx.drawImage(src, f.cutX, f.cutY, f.width, f.height, pad, pad, f.width, f.height);
+      ctx.globalCompositeOperation = 'source-in';
+      ctx.fillStyle = '#07020c';
+      ctx.fillRect(0, 0, c.width, c.height);
+      c.refresh();
+    }
+    for (const [k, color] of [['aura_wisp_black', '#000000'], ['aura_wisp_violet', '#2a0f3d']] as const) {
+      if (this.textures.exists(k)) continue;
+      const t = this.textures.createCanvas(k, 2, 2)!;
+      t.getContext().fillStyle = color; t.getContext().fillRect(0, 0, 2, 2); t.refresh();
+    }
+    const { x, y, depth } = statue;
+    const pool = this.add.ellipse(x, y - 1, 26, 7, 0x000000, 0.45).setDepth(-499);
+    const glow = this.add.image(x, y + pad, glowKey).setOrigin(0.5, 1).setDepth(depth - 0.01).setAlpha(0.75);
+    this.tweens.add({ targets: glow, alpha: 0.95, scaleX: 1.12, scaleY: 1.06, duration: 1300, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    this.tweens.add({ targets: pool, scaleX: 1.2, alpha: 0.6, duration: 1300, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    for (const [k, freq] of [['aura_wisp_black', 90], ['aura_wisp_violet', 160]] as const) {
+      this.add.particles(x, y, k, {
+        x: { min: -9, max: 9 }, y: { min: -28, max: -2 },
+        speedX: { min: -4, max: 4 }, speedY: { min: -16, max: -6 },
+        lifespan: { min: 900, max: 1700 }, alpha: { start: 0.9, end: 0 }, scale: { start: 1.4, end: 0.4 },
+        frequency: freq, quantity: 1,
+      }).setDepth(depth + 0.02);
+    }
   }
 
   /** Step off onto the nearest bit of land next to the hull. */
@@ -422,8 +530,7 @@ export class MapScene extends Phaser.Scene {
     const dx = spot.x - ship.pos.x, dy = spot.y - ship.pos.y;
     this.player.face(Math.abs(dy) * 2 > Math.abs(dx) ? (dy < 0 ? 'up' : 'down') : dx < 0 ? 'left' : 'right');
     if (!this.overview) this.cameras.main.startFollow(this.player, true, 0.15, 0.15);
-    const ships = (this.registry.get('ships') as Record<string, unknown> | undefined) ?? {};
-    this.registry.set('ships', { ...ships, [`${this.scene.key}:${this.shipIt!.id}`]: { x: ship.pos.x, y: ship.pos.y, left: ship.facingLeft } });
+    this.saveShip();
   }
 
   /** Nearest point within reach of the hull where the player's feet fit on open ground. */

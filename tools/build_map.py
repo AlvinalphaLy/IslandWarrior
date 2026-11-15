@@ -93,6 +93,12 @@ def water_norm(sheet, tid):
     return sheet, tid
 
 # ---------------------------------------------------------------- ground layers
+# hand fixes to the reconstructed ground, (cell x, cell y) -> tile stack. The islet in the bay had its top shoreline
+# hidden under a tree in the reference; with the tree gone it gets the tileset's island top edge (80-83).
+GROUND_OVERRIDES = {(17, 19): [('village', 123), ('village', 80)], (18, 19): [('village', 123), ('village', 81)],
+                    (19, 19): [('village', 123), ('village', 82)], (20, 19): [('village', 123), ('village', 83)]}
+for (cx, cy), stack in GROUND_OVERRIDES.items():
+    recon['ground'][cy][cx] = [list(t) for t in stack]
 layers_gid = [[0] * (W * H) for _ in range(3)]
 for cy in range(H):
     for cx in range(W):
@@ -101,7 +107,15 @@ for cy in range(H):
             layers_gid[li][cy * W + cx] = firstgid[sh] + tid
 
 # ---------------------------------------------------------------- objects & groups
-objs = recon['objects']
+# areas emptied on purpose: every reconstructed object in them (trees, flowers, rocks) is dropped, along with its
+# collision. patch_map.py and verify_map.py read them from the map property `clearedAreas` and leave them alone.
+CLEARED_AREAS = [
+    (266, 290, 342, 346),   # the islet in the bay: only Circe's statue stands there
+]
+def cleared(o):
+    cx, cy = o['x'] + TS / 2, o['y'] + TS / 2
+    return any(x0 <= cx < x1 and y0 <= cy < y1 for x0, y0, x1, y1 in CLEARED_AREAS)
+objs = [o for o in recon['objects'] if not cleared(o)]
 for i, o in enumerate(objs):
     o['i'] = i
     o['cat'] = category(o['sheet'], o['id'])
@@ -428,13 +442,13 @@ spawn_objs.append(dict(id=next_id(), name='horse_statue', type='statue', x=330.0
 # Circe, the witch of Aeaea (tools/make_witch_statue.py): a player-sized stone statue on the islet in the bay, wrapped
 # in a black aura. Sail up to it (or land on the islet) and press E to enter her grotto (`target`).
 # arrive = where you stand when you come back on foot (by ship you're put back at the helm).
-spawn_objs.append(dict(id=next_id(), name='circe_statue', type='statue', x=318.0, y=338.0, point=True, width=0, height=0,
+spawn_objs.append(dict(id=next_id(), name='circe_statue', type='statue', x=304.0, y=332.0, point=True, width=0, height=0,
                        rotation=0, visible=True,
                        properties=[dict(name='sprite', type='string', value='witch_statue'),
                                    dict(name='dialog', type='string', value='circe_statue'),
                                    dict(name='aura', type='bool', value=True),
                                    dict(name='target', type='string', value='circe'),
-                                   dict(name='arrive', type='string', value='298,340'),
+                                   dict(name='arrive', type='string', value='286,335'),
                                    dict(name='footW', type='int', value=12), dict(name='footH', type='int', value=5)]))
 sign_i = 0
 for g, members in groups.items():
@@ -480,7 +494,8 @@ collision_json = [dict(id=next_id(), name='', type=k, x=x, y=y, width=w, height=
 
 tmj = dict(type='map', version='1.10', tiledversion='1.10.2', orientation='orthogonal', renderorder='right-down',
            width=W, height=H, tilewidth=TS, tileheight=TS, infinite=False, nextlayerid=8, nextobjectid=oid[0] + 1,
-           tilesets=tilesets_json, layers=[])
+           tilesets=tilesets_json, layers=[],
+           properties=[dict(name='clearedAreas', type='string', value=json.dumps(CLEARED_AREAS))])
 for li in range(3):
     tmj['layers'].append(dict(id=li + 1, name=f'Ground{li}', type='tilelayer', width=W, height=H, x=0, y=0,
                               opacity=1, visible=True, data=layers_gid[li]))

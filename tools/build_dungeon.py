@@ -4,8 +4,12 @@ populated with Fantasy Battlers enemies (Spawns objects of type `enemy`).
 Layout: a 32x22 sewer hall. A water channel runs under the top wall, and two canals cross the hall from
 opposite sides, so the route zig-zags: ladder (top-left) -> right -> down -> left -> down -> the Gumball Golem's lair.
 Run: python tools/build_dungeon.py  -> also cache/dungeon_render.png + cache/dungeon_collision.png
+
+Variant `circe` (python tools/build_dungeon.py circe -> public/assets/maps/circe.json): Circe's grotto, entered from
+the witch statue on the village islet. Same sewer tiles recoloured dark violet (tilesets/grotto.png), the canals
+mirrored (the route goes left first, then right), sirens and shades, and a chest of moly at the end.
 """
-import json, os, random
+import json, os, random, sys
 import numpy as np
 from PIL import Image, ImageDraw
 
@@ -13,7 +17,11 @@ SEWER = 'Fungus Cave [16x16]/Tilesets/Tileset - Sewers 16x16.png'
 CAVE = 'Fungus Cave [16x16]/Tilesets/Tileset - Fungus cave and Refugee outpost 16x16.png'
 OUT = 'public/assets'
 TS, W, H = 16, 32, 22
-random.seed(11)
+VARIANT = sys.argv[1] if len(sys.argv) > 1 else 'sewer'
+assert VARIANT in ('sewer', 'circe'), 'variant: sewer | circe'
+MAP_NAME = 'dungeon' if VARIANT == 'sewer' else 'circe'
+TILESET_NAME = 'sewer' if VARIANT == 'sewer' else 'grotto'
+random.seed(11 if VARIANT == 'sewer' else 23)
 
 sheets = {'sewer': np.asarray(Image.open(SEWER).convert('RGBA')), 'cave': np.asarray(Image.open(CAVE).convert('RGBA'))}
 def tile(sheet, tid):
@@ -27,6 +35,8 @@ SHADOW_FLOOR = [40, 41]           # floor just below a wall or a canal edge
 # ------------------------------------------------------------------ terrain
 TOP_CHANNEL = (9, W - 2)           # x range of the water under the top wall (rows 2-3)
 CANALS = [(10, 1, 22), (15, 9, W - 2)]   # (top row, x0, x1): 2 rows of water each
+if VARIANT == 'circe':
+    CANALS = [(9, 9, W - 2), (15, 1, 22)]   # mirrored: the first gap is on the left, the second on the right
 water = np.zeros((H, W), bool)
 
 g = [[0] * W for _ in range(H)]
@@ -72,6 +82,14 @@ g1[0][LADDER_X] = ('cave', 99)
 g1[1][LADDER_X] = ('cave', 115)
 
 # ------------------------------------------------------------------ props: (sheet, rows, tile x, tile y, category)
+STAMPS_CIRCE = [
+    ('sewer', [[47]], 6, 5, 'flat'), ('sewer', [[54]], 17, 5, 'flat'), ('sewer', [[55]], 25, 6, 'flat'),
+    ('sewer', [[47]], 4, 13, 'flat'), ('sewer', [[55]], 12, 19, 'flat'), ('sewer', [[54]], 27, 12, 'flat'),
+    ('cave', [[150]], 1, 5, 'solid'), ('cave', [[151]], 1, 6, 'solid'), ('cave', [[158]], 13, 6, 'solid'),
+    ('cave', [[242]], 29, 5, 'solid'), ('cave', [[236], [244]], 30, 5, 'solid'),
+    ('cave', [[128]], 21, 12, 'flat'), ('cave', [[130]], 9, 12, 'flat'), ('cave', [[89]], 5, 19, 'flat'),
+    ('sewer', [[73, 74]], 28, 19, 'solid'),                                          # Circe's chest of moly
+]
 STAMPS = [
     ('sewer', [[47]], 6, 4, 'flat'), ('sewer', [[54]], 17, 6, 'flat'), ('sewer', [[55]], 25, 5, 'flat'),
     ('sewer', [[47]], 3, 13, 'flat'), ('sewer', [[55]], 12, 18, 'flat'), ('sewer', [[54]], 27, 13, 'flat'),
@@ -80,6 +98,9 @@ STAMPS = [
     ('cave', [[128]], 21, 13, 'flat'), ('cave', [[130]], 9, 13, 'flat'), ('cave', [[89]], 5, 19, 'flat'),
     ('sewer', [[73, 74]], 28, 19, 'solid'),                                          # the Golem's treasure chest
 ]
+
+if VARIANT == 'circe':
+    STAMPS = STAMPS_CIRCE
 
 # ------------------------------------------------------------------ collision
 rects = []
@@ -149,18 +170,39 @@ def area(name, typ, x, y, w, h, **props):
 point('player', 'player', LADDER_X + 0.5, 3.6, sprite='adam')
 area('exit_ladder', 'exit', LADDER_X * TS + 1, 2 * TS - 2, 14, 9, target='village')
 # enemies: `enemy` = id in src/data/enemies.ts, names must be unique (defeats are remembered by name)
-for name, enemy, tx, ty in [
+ENEMY_SPAWNS = [
     # Odyssey enemies (tools/greek_battlers.py); the Fantasy Battlers ids in enemies.ts still work here too
     ('raider_a', 'raider', 12, 6.5), ('captain_a', 'raider_captain', 19, 8.5), ('siren_a', 'siren', 27, 7),
     ('siren_b', 'siren_violet', 26, 13.5), ('shade_a', 'shade', 14, 13.8), ('shade_b', 'shade_restless', 5, 14),
     ('raider_b', 'raider', 4, 19.5), ('shade_c', 'shade', 11, 20), ('polyphemus', 'polyphemus', 21, 20.5),
-]:
+]
+CHEST = 'chest_golem'
+if VARIANT == 'circe':
+    # Circe's creatures: the shades she sends Odysseus to, and sirens (she warns him of them)
+    ENEMY_SPAWNS = [
+        ('shade_a', 'shade', 12, 6.5), ('siren_a', 'siren', 20, 7.5), ('shade_b', 'shade_restless', 27, 7),
+        ('siren_b', 'siren_violet', 6, 12.8), ('shade_c', 'shade', 16, 13), ('siren_c', 'siren', 26, 13),
+        ('shade_d', 'shade_restless', 10, 20), ('siren_d', 'siren_violet', 22, 20),
+    ]
+    CHEST = 'chest_circe'
+for name, enemy, tx, ty in ENEMY_SPAWNS:
     point(name, 'enemy', tx, ty, enemy=enemy)
-area('chest_golem', 'chest', 28 * TS, 19 * TS, 32, 16, dialog='chest_golem')
+area(CHEST, 'chest', 28 * TS, 19 * TS, 32, 16, dialog=CHEST)
 
 # ------------------------------------------------------------------ write Tiled JSON
 os.makedirs(f'{OUT}/maps', exist_ok=True); os.makedirs(f'{OUT}/tilesets', exist_ok=True)
-Image.open(SEWER).convert('RGBA').save(f'{OUT}/tilesets/sewer.png')
+def grotto(img):
+    """Recolour the sewer tiles for Circe's grotto: darker, and every colour pulled toward violet."""
+    a = np.asarray(img).astype(np.float32)
+    lum = a[..., :3] @ np.array([0.3, 0.55, 0.15], np.float32)
+    violet = lum[..., None] * np.array([0.9, 0.62, 1.25], np.float32)
+    rgb = (a[..., :3] * 0.3 + violet * 0.7) * 1.08
+    return Image.fromarray(np.dstack([np.clip(rgb, 0, 255), a[..., 3]]).astype(np.uint8))
+tileset_img = Image.open(SEWER).convert('RGBA')
+if VARIANT == 'circe':
+    tileset_img = grotto(tileset_img)
+    sheets['sewer'] = np.asarray(tileset_img)   # previews use the recoloured tiles
+tileset_img.save(f'{OUT}/tilesets/{TILESET_NAME}.png')
 FIRST = {'sewer': 1}
 sw = sheets['sewer']; scount = (sw.shape[1] // TS) * (sw.shape[0] // TS)
 FIRST['cave'] = 1 + scount
@@ -181,14 +223,14 @@ layers = [
                   for x, y, w, h, k in rects]),
     dict(id=6, name='Spawns', type='objectgroup', opacity=1, visible=False, x=0, y=0, objects=spawns),
 ]
-tilesets = [dict(firstgid=FIRST['sewer'], name='sewer', image='../tilesets/sewer.png', imagewidth=sw.shape[1], imageheight=sw.shape[0],
+tilesets = [dict(firstgid=FIRST['sewer'], name=TILESET_NAME, image=f'../tilesets/{TILESET_NAME}.png', imagewidth=sw.shape[1], imageheight=sw.shape[0],
                  tilewidth=TS, tileheight=TS, columns=sw.shape[1] // TS, tilecount=scount, margin=0, spacing=0),
             dict(firstgid=FIRST['cave'], name='cave', image='../tilesets/cave.png', imagewidth=cv.shape[1], imageheight=cv.shape[0],
                  tilewidth=TS, tileheight=TS, columns=cv.shape[1] // TS, tilecount=ccount, margin=0, spacing=0)]
 tmj = dict(type='map', version='1.10', tiledversion='1.10.2', orientation='orthogonal', renderorder='right-down', width=W,
            height=H, tilewidth=TS, tileheight=TS, infinite=False, nextlayerid=7, nextobjectid=oid[0] + 1,
            properties=[dict(name='dark', type='bool', value=True)], tilesets=tilesets, layers=layers)
-json.dump(tmj, open(f'{OUT}/maps/dungeon.json', 'w'), default=lambda v: v.item())
+json.dump(tmj, open(f'{OUT}/maps/{MAP_NAME}.json', 'w'), default=lambda v: v.item())
 
 # ------------------------------------------------------------------ previews
 canvas = Image.new('RGBA', (W * TS, H * TS), (0, 0, 0, 255))
@@ -198,7 +240,7 @@ for y in range(H):
         if g1[y][x]: canvas.alpha_composite(Image.fromarray(tile(*g1[y][x])), (x * TS, y * TS))
 for o in sorted(objects, key=lambda o: (o['sortY'], o['z'])):
     canvas.alpha_composite(Image.fromarray(tile(o['sheet'], o['id'])), (o['x'], o['y']))
-canvas.resize((W * TS * 2, H * TS * 2), Image.NEAREST).save('cache/dungeon_render.png')
+canvas.resize((W * TS * 2, H * TS * 2), Image.NEAREST).save(f'cache/{MAP_NAME}_render.png')
 d = ImageDraw.Draw(canvas, 'RGBA')
 for x, y, w, h, k in rects:
     d.rectangle([x, y, x + w - 1, y + h - 1], fill={'wall': (255, 0, 200, 90), 'water': (0, 120, 255, 110), 'solid': (255, 255, 0, 130)}[k])
@@ -207,5 +249,5 @@ for s in spawns:
         d.ellipse([s['x'] - 3, s['y'] - 3, s['x'] + 3, s['y'] + 3], fill=(255, 60, 60, 255) if s['type'] == 'enemy' else (255, 255, 255, 255))
     else:
         d.rectangle([s['x'], s['y'], s['x'] + s['width'] - 1, s['y'] + s['height'] - 1], outline=(0, 255, 0, 255))
-canvas.resize((W * TS * 2, H * TS * 2), Image.NEAREST).save('cache/dungeon_collision.png')
-print(f'dungeon: {W}x{H} objects={len(objects)} rects={len(rects)} spawns={len(spawns)}')
+canvas.resize((W * TS * 2, H * TS * 2), Image.NEAREST).save(f'cache/{MAP_NAME}_collision.png')
+print(f'{MAP_NAME}: {W}x{H} objects={len(objects)} rects={len(rects)} spawns={len(spawns)}')

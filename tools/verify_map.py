@@ -60,6 +60,7 @@ same = (out == ref).all(-1)
 custom = json.loads(next((p['value'] for p in m.get('properties', []) if p['name'] == 'customArt'), '[]'))
 # villagers painted into the reference are deliberately not copied (tools/patch_map.py BAKED_ACTORS)
 custom += json.loads(next((p['value'] for p in m.get('properties', []) if p['name'] == 'bakedActors'), '[]'))
+custom += json.loads(next((p['value'] for p in m.get('properties', []) if p['name'] == 'clearedAreas'), '[]'))
 keep = np.ones(same.shape, bool)
 for x0, y0, x1, y1 in custom:
     keep[max(0, y0):y1, max(0, x0):x1] = False

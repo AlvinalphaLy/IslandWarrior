@@ -25,6 +25,10 @@ export const DIALOG: Record<string, DialogEntry> = {
   ship_voyage_soon: { name: 'The black ship', lines: ["The Oracle has not yet shown the way to the dragon's lair."] },
   ship_sail: { name: 'The black ship', lines: ["The crew takes up the oars. Across the wine-dark sea to the dragon's lair!"] },
 
+  // Circe's statue on the islet: closing these lines takes you into her grotto (tools/build_dungeon.py circe)
+  circe_statue: { name: 'Statue of Circe', lines: ['A stone witch stands in a cloud of black smoke. Her eyes glow violet.', 'The smoke curls around you and pulls you down into the dark...'] },
+  chest_circe: { name: 'Chest', lines: ['A sprig of moly, the herb Hermes gave Odysseus against Circe\'s magic.'] },
+
   // ---- cave (under every house) ----
   fungus_king: { name: 'Fungus King', lines: ['So. A surface-dweller finds the way down through a cellar.', 'Every house on your island sits upon my kingdom. Tread softly, warrior.'] },
   fungus_red: { name: 'Rufus', lines: ['Spores! Spores everywhere! ...Sorry, that was me.'] },
