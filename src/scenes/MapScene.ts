@@ -154,14 +154,16 @@ export class MapScene extends Phaser.Scene {
     this.harbor = prop(this.raw, 'harbor', false) && this.ship
       ? new Harbor({ scene: this, ship: this.ship, say: (key) => this.say(key), leave: (escaped) => this.leaveHarbor(escaped) }, this.layer('Spawns'))
       : null;
-    if (this.harbor) { this.board(true); toast(dialogFor('harbor_intro').lines[0], 4200); }
+    if (this.harbor) toast(dialogFor('harbor_intro').lines[0], 4200);
 
     const cam = this.cameras.main;
     cam.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
     cam.startFollow(this.player, true, 0.15, 0.15);
     cam.setRoundPixels(true);
     cam.fadeIn(300, 0, 0, 0);
-    if (this.boardOnStart) this.board(true);
+    // start at the helm (back from a statue by ship, or in the harbour): board after the camera setup above, so the
+    // camera follows the ship rather than the hidden player
+    if (this.boardOnStart || this.harbor) this.board(true);
     if (prop(this.raw, 'dark', false)) {
       this.vignette = this.add.image(0, 0, 'vignette').setOrigin(0).setScrollFactor(0).setDepth(9000).setDisplaySize(cam.width, cam.height);
     }

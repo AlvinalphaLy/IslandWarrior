@@ -21,8 +21,8 @@ const RANGE = 230;            // giants only throw at a ship this close
 const FLIGHT_MS = 1150;       // boulder flight time (the shadow's warning)
 const HULL_DAMAGE = 6;
 const HIT_RADIUS = 13;        // landing this close to the hull (beyond its rectangle) still hits
-const SHIP_SPEED = 84;        // the ship's top speed in the harbour (58 elsewhere)
-const SHIP_ACCEL = 4.5;       // and how sharply it turns / stops (2.5 elsewhere)
+const SHIP_SPEED = 104;       // the ship's top speed in the harbour (58 elsewhere)
+const SHIP_ACCEL = 5.5;       // and how sharply it turns / stops (2.5 elsewhere)
 const prop = <T>(o: GiantSpawn, k: string, d: T): T => (o.properties?.find((p) => p.name === k)?.value as T) ?? d;
 
 export interface HarborHost {
