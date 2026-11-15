@@ -745,33 +745,34 @@ export class Archery {
     });
   }
 
-  /** the unstrung recurve bow in the suitor's hands: tips curling forward, the string hanging loose */
+  /** the unstrung recurve bow in the suitor's hands (dark limbs, gold wraps): tips curling forward, string hanging loose */
   private makeHeldBow() {
     const tx = this.scene.textures;
     if (tx.exists('bow_held')) return;
     const rows = [
       '.......OO.',
-      '......OWO.',
-      '.....OWO..',
-      '....OWO...',
-      '...OWO....',
-      '...OWO....',
-      '..OWWO....',
+      '......ODO.',
+      '.....ODO..',
+      '....ODO...',
+      '...OYO....',
+      '...OYO....',
+      '..OYYO....',
       '..OBBO....',
-      '..OGGO....',
+      '..ORRO....',
       '..OBBO....',
-      '..OWWO....',
-      '...OWO....',
-      '...OWO....',
-      '....OWO...',
-      '.....OWO..',
-      '......OWO.',
+      '..OYYO....',
+      '...OYO....',
+      '...OYO....',
+      '....ODO...',
+      '.....ODO..',
+      '......ODO.',
       '.......OO.',
       '......s...',
       '.....s....',
       '....s.....',
     ];
-    const col: Record<string, string> = { O: '#2a1810', W: '#9a6232', B: '#5a3a22', G: '#c9962f', s: '#f0e6d0' };
+    // like the bow of Odysseus in the mini-game: dark limbs, gold-wrapped next to a dark ribbed grip
+    const col: Record<string, string> = { O: '#140c08', D: '#3a2a22', Y: '#f2b530', B: '#2e221c', R: '#4a3a30', s: '#b8bcc8' };
     const c = tx.createCanvas('bow_held', 10, rows.length)!;
     const ctx = c.getContext();
     rows.forEach((r, y) => [...r].forEach((ch, x) => { if (ch !== '.') { ctx.fillStyle = col[ch]; ctx.fillRect(x, y, 1, 1); } }));

@@ -122,44 +122,29 @@ export class BowScene extends Phaser.Scene {
       gy = H / 2 + 6,
       L = 82;
     const p = this.bend;
-    // unstrung, the tips curl forward (away from you, to the right); strung, they sit back with a small recurve hook
-    const tipX = Phaser.Math.Linear(48, -12, p);
-    const ctrlX = Phaser.Math.Linear(20, 10, p);
+    // the limbs: unstrung they flex forward (away from you); bent back they take the working recurve shape
     const tips: Phaser.Math.Vector2[] = [];
-    for (const s of [-1, 1]) {
-      const start = new Phaser.Math.Vector2(cx, gy + s * 9);
-      const ctrl = new Phaser.Math.Vector2(cx + ctrlX, gy + s * L * 0.55);
-      const end = new Phaser.Math.Vector2(cx + tipX, gy + s * L);
-      const curve = new Phaser.Curves.QuadraticBezier(start, ctrl, end);
-      g.lineStyle(9, 0x2a1810, 1);
-      curve.draw(g, 32);
-      g.lineStyle(6, 0x9a6232, 1);
-      curve.draw(g, 32);
-      g.lineStyle(2, 0xc98b4e, 1);
-      curve.draw(g, 32);
-      // the recurve hook at the tip, curling forward
-      const hook = new Phaser.Math.Vector2(end.x + 8, end.y + s * 6);
-      g.lineStyle(6, 0x2a1810, 1).lineBetween(end.x, end.y, hook.x, hook.y);
-      g.lineStyle(4, 0x9a6232, 1).lineBetween(end.x, end.y, hook.x, hook.y);
-      tips.push(end);
+    for (const s of [-1, 1]) tips.push(this.drawLimb(g, cx, gy, L, s, p));
+    // the grip: dark, ribbed
+    g.fillStyle(0x140c08).fillRoundedRect(cx - 6, gy - 14, 12, 28, 3);
+    g.fillStyle(0x2e221c).fillRoundedRect(cx - 5, gy - 13, 10, 26, 2);
+    for (let y = gy - 11; y <= gy + 11; y += 3) {
+      g.fillStyle(0x4a3a30).fillRect(cx - 4, y, 8, 1);
+      g.fillStyle(0x140c08).fillRect(cx - 4, y + 1, 8, 1);
     }
-    // the grip, wrapped in leather with a bronze band
-    g.fillStyle(0x2a1810).fillRect(cx - 5, gy - 13, 10, 26);
-    g.fillStyle(0x5a3a22).fillRect(cx - 4, gy - 12, 8, 24);
-    g.fillStyle(0xc9962f).fillRect(cx - 4, gy - 2, 8, 3);
     const [top, bottom] = tips;
     if (!this.over || p < 1) {
       // the string, tied at the bottom tip, its loop held in Odysseus' hand, which climbs toward the top tip
       const hx = Phaser.Math.Linear(bottom.x - 34, top.x - 4, p);
       const hy = Phaser.Math.Linear(bottom.y - 30, top.y + 4, p);
-      g.lineStyle(1, 0xf0e6d0, 1).lineBetween(bottom.x, bottom.y, hx, hy);
+      g.lineStyle(1, 0xb8bcc8, 1).lineBetween(bottom.x, bottom.y, hx, hy);
       g.fillStyle(0x2a1810).fillCircle(hx, hy, 6);
       g.fillStyle(0xe0a97c).fillCircle(hx, hy, 5);
     } else {
       // strung: taut from tip to tip, quivering after the snap
       const mid = (top.y + bottom.y) / 2,
         off = Math.sin(this.time.now / 18) * 6 * this.twang;
-      g.lineStyle(1, 0xffffff, 1);
+      g.lineStyle(1, 0xd8dce6, 1);
       g.beginPath().moveTo(top.x, top.y).lineTo(top.x - 6 + off, mid).lineTo(bottom.x, bottom.y).strokePath();
     }
     // bend meter
@@ -175,6 +160,63 @@ export class BowScene extends Phaser.Scene {
       f = Math.max(0, this.timeLeft / TIME_S);
     t.fillStyle(0x000000, 0.6).fillRect(W / 2 - 110, 50, 220, 4);
     t.fillStyle(f > 0.3 ? 0x7cfc9a : 0xe05d5d).fillRect(W / 2 - 110, 50, 220 * f, 4);
+  }
+
+  /**
+   * One limb of the recurve (s = -1 top, +1 bottom), after the reference bow: a dark limb with a sawtooth ridge along
+   * its back, a gold-wrapped S-curve next to the grip with banded ends, and a tip that curls forward into a dark nock.
+   * `p`: 0 unstrung (flexed forward), 1 bent into its working shape. Returns the nock, where the string sits.
+   */
+  private drawLimb(g: Phaser.GameObjects.Graphics, cx: number, gy: number, L: number, s: number, p: number) {
+    const lerp = (a: number, b: number) => Phaser.Math.Linear(a, b, p);
+    const V = (x: number, y: number) => new Phaser.Math.Vector2(cx + x, gy + s * y);
+    const curve = new Phaser.Curves.CubicBezier(
+      V(0, 12),
+      V(lerp(22, 14), 36),
+      V(lerp(46, -6), lerp(60, 66)),
+      V(lerp(50, -14), lerp(L * 0.92, L)),
+    );
+    const pts = curve.getPoints(44);
+    // the recurve: the last stretch curls forward, away from the string
+    const tip = pts[pts.length - 1];
+    const curl = [tip, new Phaser.Math.Vector2(tip.x + 6, tip.y + s * 3), new Phaser.Math.Vector2(tip.x + 11, tip.y + s * 2)];
+    const all = [...pts, ...curl.slice(1)];
+    const normal = (i: number) => {
+      const a = all[Math.max(0, i - 1)], b = all[Math.min(all.length - 1, i + 1)];
+      const n = new Phaser.Math.Vector2(-(b.y - a.y), b.x - a.x).normalize();
+      return n.x < 0 ? n.negate() : n; // the back of the limb: the side away from the string (which is on the left)
+    };
+    // outline, body, sheen
+    g.lineStyle(12, 0x140c08, 1).strokePoints(all, false);
+    g.lineStyle(9, 0x3a2a22, 1).strokePoints(all, false);
+    g.lineStyle(2, 0x6a4c3c, 1).strokePoints(all.map((q, i) => q.clone().add(normal(i).scale(-2.5))), false);
+    // the sawtooth ridge along the back, outside the wrap
+    for (let i = 18; i < all.length - 2; i += 2) {
+      const n = normal(i), q = all[i], t = all[i + 1].clone().subtract(q).normalize();
+      const base = q.clone().add(n.clone().scale(4));
+      g.fillStyle(0x140c08).fillTriangle(base.x - t.x * 2, base.y - t.y * 2, base.x + t.x * 2, base.y + t.y * 2, base.x + n.x * 3, base.y + n.y * 3);
+      g.fillStyle(0x3a2a22).fillTriangle(base.x - t.x * 1.2, base.y - t.y * 1.2, base.x + t.x * 1.2, base.y + t.y * 1.2, base.x + n.x * 2, base.y + n.y * 2);
+    }
+    // the gold wrap: an S-curve next to the grip, wound with thread, banded at both ends
+    const w0 = 2, w1 = 17;
+    const wrap = all.slice(w0, w1 + 1);
+    g.lineStyle(11, 0x140c08, 1).strokePoints(wrap, false);
+    g.lineStyle(9, 0xf2b530, 1).strokePoints(wrap, false);
+    g.lineStyle(2, 0xffd76a, 1).strokePoints(wrap.map((q, i) => q.clone().add(normal(w0 + i).scale(-2.5))), false);
+    for (let i = w0 + 1; i < w1; i++) {
+      const n = normal(i), q = all[i];
+      g.lineStyle(1, 0xc98a1e, 0.9).lineBetween(q.x - n.x * 4, q.y - n.y * 4, q.x + n.x * 4, q.y + n.y * 4);
+    }
+    for (const i of [w0, w1]) {
+      const n = normal(i), q = all[i];
+      g.lineStyle(5, 0x140c08, 1).lineBetween(q.x - n.x * 6, q.y - n.y * 6, q.x + n.x * 6, q.y + n.y * 6);
+      g.lineStyle(3, 0xe0a020, 1).lineBetween(q.x - n.x * 5, q.y - n.y * 5, q.x + n.x * 5, q.y + n.y * 5);
+    }
+    // the nock cap at the tip
+    const nock = all[all.length - 1];
+    g.fillStyle(0x140c08).fillCircle(nock.x, nock.y, 4);
+    g.fillStyle(0x2a1c16).fillCircle(nock.x, nock.y, 3);
+    return nock;
   }
 
   private strung() {

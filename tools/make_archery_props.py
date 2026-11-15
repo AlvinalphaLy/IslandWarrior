@@ -1,6 +1,6 @@
 """Draw the props of the Cyclops cave's archery puzzle as 16px-style pixel art, into public/assets/props/:
 
-  arrow.png   10x3   an arrow pointing right (the game rotates it)
+  arrow.png   10x5   an arrow pointing right (the game rotates it): fletched, gold-banded, bronze-headed
   bow.png     14x16  Odysseus' bow, lying on a stone (the pickup)
   target.png  2 frames of 14x22: a bronze disc on a wooden post, dull (0) and struck / glowing (1)
   axe.png     12x26  an axe standing on its haft, with the ring-hole at the top the arrow must pass through
@@ -55,10 +55,12 @@ def sprite(rows):
     return a
 
 
-ARROW = [
-    "rr......OO",
-    "RWWWWWWWYO",
-    "rr......OO",
+ARROW = [  # red-and-white fletching, a dark shaft with a gold band, a bronze broadhead
+    "rr.....O..",
+    "RFr...OBO.",
+    "FRRwwYwBBO",
+    "RFr...OBO.",
+    "rr.....O..",
 ]
 
 BOW = [
