@@ -191,8 +191,9 @@ export class MapScene extends Phaser.Scene {
     if (prop(this.raw, 'dark', false)) {
       this.vignette = this.add.image(0, 0, 'vignette').setOrigin(0).setScrollFactor(0).setDepth(9000).setDisplaySize(cam.width, cam.height);
     }
-    // the night storm (outdoors only: maps with `dark` are caves and grottos), lit around the player or the ship
-    this.weather = new Weather(this, !prop(this.raw, 'dark', false), () => (this.sailing && this.ship ? this.ship.pos : this.player));
+    // the night storm (outdoors only: maps with `dark` are caves and grottos), lit by Odysseus' torch or the ship
+    this.weather = new Weather(this, !prop(this.raw, 'dark', false),
+      () => (this.sailing && this.ship ? { x: this.ship.pos.x, y: this.ship.pos.y } : { x: this.player.x, y: this.player.y, facing: this.player.facing }));
     setWeatherButton(this.weather.enabled);
 
     this.debugGfx = this.add.graphics().setDepth(10000).setVisible(false);
