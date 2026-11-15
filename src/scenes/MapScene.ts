@@ -270,7 +270,8 @@ export class MapScene extends Phaser.Scene {
     // arriving back through a door: stand just outside it, facing away from the house
     const via = this.portals.find((p) => p.kind === 'door' && p.id === this.arrival.from);
     // a skin chosen with C carries over between maps
-    const sprite = (this.registry.get('playerSkin') as string | undefined) ?? start?.sprite ?? 'adam';
+    // the player is Odysseus (PLAYER_SKINS[0]) unless another skin was picked with C
+    const sprite = (this.registry.get('playerSkin') as string | undefined) ?? PLAYER_SKINS[0].key;
     if (via) start = { x: via.rect.centerX, y: via.rect.bottom + 6, sprite, face: 'down' };
     // sailing home: step off onto the shore, looking at the ship
     const landing = this.arrival.from ? this.shipLandings[this.arrival.from] : undefined;
@@ -351,7 +352,7 @@ export class MapScene extends Phaser.Scene {
     setActionHandler(() => this.interact());
   }
 
-  /** Cycle the player through PLAYER_SKINS (Adam and the Greek gods). */
+  /** Cycle the player through PLAYER_SKINS (Odysseus, Adam and the Greek gods). */
   private cycleSkin() {
     if (this.dialog || this.leaving) return;
     const i = PLAYER_SKINS.findIndex((s) => s.key === this.player.sheet);

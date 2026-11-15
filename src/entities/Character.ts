@@ -43,10 +43,13 @@ export const CHARACTER_SHEETS: Record<string, SheetLayout> = {
   refugee1: RPGM, refugee2: RPGM, refugee3: RPGM, refugee4: RPGM, sewer_ghost: RPGM, sewer_monster: RPGM,
   // Greek god skins (tools/greek_skins.py), same layout as the LimeZu sheets they are painted over
   zeus: LIMEZU, hermes: LIMEZU, hades: LIMEZU, heracles: LIMEZU, aphrodite: LIMEZU,
+  // the player's default look: Odysseus in his battle gear (tools/greek_skins.py)
+  odysseus: LIMEZU,
 };
 
-/** Skins the player can cycle through with C, in order. */
+/** Skins the player can cycle through with C, in order. The first is the default. */
 export const PLAYER_SKINS: { key: string; name: string }[] = [
+  { key: 'odysseus', name: 'Odysseus' },
   { key: 'adam', name: 'Adam' },
   { key: 'zeus', name: 'Zeus' },
   { key: 'hermes', name: 'Hermes' },

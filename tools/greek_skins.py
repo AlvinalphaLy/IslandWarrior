@@ -77,6 +77,16 @@ GODS = {
         top=ramp('9e3f6b', 'd06a97', 'ee9bbd', 'fcd0e2'),
         belt=ramp('b8860b', 'f2cc55'),
     ),
+    # the player: Odysseus as in the battle screen (gk_odysseus) - bronze helmet with a red crest, short brown beard,
+    # red tunic, bronze belt and greaves, round bronze shield
+    'odysseus': dict(
+        base='adam', legs='skirt',
+        hair=ramp('3b2414', '5a3820', '7a4f2c', '9a6a3c'),
+        skin=ramp('a86a44', 'c98b5e', 'e0a97c', 'f2c49a'),
+        top=ramp('5e1418', '8e2228', 'b8343a', 'd85a58'),
+        belt=ramp('9b6b12', 'f5d76e'),
+        sandal=rgb('b07a2a'),
+    ),
 }
 
 
@@ -232,7 +242,9 @@ def chin_row(fr, skin):
     return best
 
 
-def beard(fr, skin):
+def beard(fr, skin, cols=None, short=False):
+    """cols: dark -> light ramp (default white). short: only the jaw line and chin, no long point."""
+    W_ = cols or WHITE
     if fr.d == 'up':
         return
     hb = chin_row(fr, skin)
@@ -246,19 +258,19 @@ def beard(fr, skin):
     lx, rx = min(xs), max(xs)
     cx = (lx + rx) / 2
     for x in xs:
-        fr.put(x, fr.hb, WHITE[3])
+        fr.put(x, fr.hb, W_[3] if not short else W_[2])
     for x in range(FW):  # cheeks and moustache on the mouth row
         if face(x, fr.hb - 1) and (x <= lx + 1 or x >= rx - 1 or abs(x + 0.5 - cx - 0.5) <= 1):
-            fr.put(x, fr.hb - 1, WHITE[3] if abs(x + 0.5 - cx - 0.5) > 1 else WHITE[2])
-    half = 2.5 if fr.d == 'down' else 1.5
+            fr.put(x, fr.hb - 1, W_[3] if abs(x + 0.5 - cx - 0.5) > 1 else W_[2])
+    half = (1.5 if fr.d == 'down' else 1.0) if short else (2.5 if fr.d == 'down' else 1.5)
     for i, y in enumerate((fr.hb + 1, fr.hb + 2, fr.hb + 3)):
         h = half - i
         if h <= 0:
             break
         x0, x1 = int(round(cx - h + 0.5)), int(round(cx + h - 0.5))
         for x in range(x0, x1 + 1):
-            fr.put(x, y, WHITE[3] if x not in (x0, x1) else WHITE[1])
-        fr.put(x0 - 1, y, WHITE[0]); fr.put(x1 + 1, y, WHITE[0])
+            fr.put(x, y, W_[3] if x not in (x0, x1) else W_[1])
+        fr.put(x0 - 1, y, W_[0]); fr.put(x1 + 1, y, W_[0])
 
 
 def sash(fr, c1=GOLD[2], c2=GOLD[1]):
@@ -373,6 +385,82 @@ def pearls(fr):
             fr.put(x, y, rgb('fff8f0'))
 
 
+BRONZE = ramp('6e4a12', '9b6b12', 'c9962f', 'f5d76e')
+CREST = ramp('6a1216', 'a8242a', 'e04848')
+
+
+def crested_helmet(fr):
+    """Bronze helmet over the crown and down the cheeks, with a red horsehair crest running front to back."""
+    top = fr.t + 1
+    for y in range(top, top + 4):
+        for x in range(FW):
+            if fr.opaque(x, y) and not fr.edge[y, x]:
+                fr.put(x, y, BRONZE[3] if y == top else BRONZE[2] if y < top + 3 else BRONZE[1])
+    # brow band and cheek guards
+    lx, rx = fr.span(top + 4)
+    if lx is not None:
+        for x in range(lx + 1, rx):
+            if fr.opaque(x, top + 4) and not fr.edge[top + 4, x] and fr.d == 'up':
+                fr.put(x, top + 4, BRONZE[1])
+        for y in (top + 4, top + 5, top + 6):
+            l, r = fr.span(y)
+            if l is None:
+                continue
+            if fr.d != 'right': fr.put(l + 1, y, BRONZE[1])
+            if fr.d != 'left': fr.put(r - 1, y, BRONZE[1])
+    lx, rx = fr.span(top)
+    cx = (lx + rx) // 2
+    if fr.d in ('down', 'up'):           # crest seen end-on: a red brush standing up from the crown
+        brush = [(fr.t - 3, cx - 1, cx + 2, 2), (fr.t - 2, cx - 1, cx + 2, 1), (fr.t - 1, cx, cx + 1, 1), (fr.t, cx, cx + 1, 0)]
+        pts = set()
+        for y, a, b, lvl in brush:
+            for x in range(a, b + 1):
+                fr.put(x, y, CREST[lvl]); pts.add((x, y))
+        fr.put(cx, fr.t - 2, CREST[2])
+        for x, y in list(pts):          # dark outline where the brush meets empty space
+            for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1)):
+                if (nx, ny) not in pts and not fr.opaque(nx, ny):
+                    fr.put(nx, ny, DARK_OUTLINE)
+    else:                                 # side view: the crest sweeps from the brow over to the back
+        s = 1 if fr.d == 'right' else -1
+        front, back = (rx - 1, lx - 1) if s > 0 else (lx + 1, rx + 1)
+        n = abs(front - back)
+        for i in range(n + 1):
+            x = front - s * i
+            h = 2 if 1 <= i <= n - 2 else 1
+            for k in range(h + 1):
+                fr.put(x, fr.t - k, CREST[2] if k == h else CREST[1])
+        fr.put(back - s, fr.t + 1, CREST[1]); fr.put(back - s, fr.t + 2, CREST[0])   # tail hanging at the back
+
+
+def shield(fr):
+    """Round bronze shield on the left arm: in front when facing down, on the back facing up,
+    behind the body in profile (drawn only where the body leaves the frame empty)."""
+    disc = ['..ooo..', '.oaaao.', 'oaabaao', 'oabbbao', 'oaabaao', '.oaaao.', '..ooo..']
+    col = {'o': BRONZE[0], 'a': BRONZE[2], 'b': BRONZE[3]}
+    lx, rx = fr.span(fr.ts + 1)
+    if lx is None:
+        return
+    if fr.d == 'down':   x0, behind = rx - 4, False
+    elif fr.d == 'up':   x0, behind = lx - 2, False
+    elif fr.d == 'right': x0, behind = lx - 4, True
+    else:                x0, behind = rx - 1, True
+    y0 = fr.ts
+    for j, row in enumerate(disc):
+        for i, ch in enumerate(row):
+            if ch == '.':
+                continue
+            x, y = x0 + i, y0 + j
+            if behind and fr.opaque(x, y):
+                continue
+            c = col[ch]
+            if ch == 'b' and fr.d == 'up':
+                c = BRONZE[2]
+            fr.put(x, y, c)
+    if fr.d == 'down':  # boss highlight
+        fr.put(x0 + 3, y0 + 2, rgb('fff1b0'))
+
+
 def decorate(god, fr):
     spec = GODS[god]
     if god == 'zeus':
@@ -385,6 +473,9 @@ def decorate(god, fr):
         lion_ears(fr); lion_cape(fr)
     elif god == 'aphrodite':
         rose(fr); belt(fr, spec['belt']); pearls(fr)
+    elif god == 'odysseus':
+        beard(fr, set(map(tuple, spec['skin'])), cols=spec['hair'], short=True)
+        crested_helmet(fr); belt(fr, spec['belt']); shield(fr)
 
 
 def build(god):
@@ -420,6 +511,9 @@ def preview(sheets):
 
 
 if __name__ == '__main__':
-    sheets = [build(g) for g in GODS]
+    import sys
+    # python tools/greek_skins.py [name ...]  builds only those skins (default: all)
+    names = sys.argv[1:] or list(GODS)
+    sheets = [build(g) for g in names]
     preview(sheets)
-    print('ok', list(GODS))
+    print('ok', names)
