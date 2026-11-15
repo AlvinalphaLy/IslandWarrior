@@ -21,6 +21,10 @@ npm run dev        # http://localhost:5173
 
 On touch devices, an on-screen D-pad and an action button appear.
 
+### Asset packs
+
+The game runs from what's in `public/assets/`, which is committed. The original third-party packs are not in the repo: `Serene_Village_revamped_v1.9/`, `Fungus Cave [16x16]/`, `Fantasy Battlers - Free/` and `vendor/modern_interiors_free/`. You only need them to re-run the asset/map scripts in `tools/` (`npm run map`, `map:cave`, `characters`). To do that, download the packs and put them back at those paths in the project root.
+
 ## How the map was built
 
 The reference is an exact 2× upscale of 16px art, which works out to a 44×25 tile grid. The map was rebuilt from it with a two-pass process:
