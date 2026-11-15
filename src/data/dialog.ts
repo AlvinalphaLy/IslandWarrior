@@ -16,6 +16,7 @@ export const DIALOG: Record<string, DialogEntry> = {
   sign_3: { name: 'Sign', lines: ['Fishing spot. Patience required.'] },
   sign_4: { name: 'Sign', lines: ['Welcome to the island!'] },
   sign_5: { name: 'Sign', lines: ['Garden. Please keep off the flowers.'] },
+  cyclops_head: { name: 'Head of Polyphemus', lines: ['A giant stone head sinks into the islet, its one great eye fixed on the bay.', 'Words are scratched into the brow: "Nobody did this to me."'] },
   horse_statue: { name: 'Wooden Horse', lines: ['A great horse carved from ship timber, rearing toward the sea.', 'The plaque reads: "Beware of Greeks bearing gifts."'] },
 
   // the ship of Odysseus: board it from the shore and sail it; the south edge of the map is the voyage to the lair

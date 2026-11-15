@@ -71,6 +71,8 @@ export class MapScene extends Phaser.Scene {
   private edgeToastAt = 0;
   /** statues that lead somewhere (Circe's): where they stand and where you reappear on foot */
   private statues: { it: Interactable; x: number; y: number; arrive: Phaser.Math.Vector2 }[] = [];
+  /** statues with only a plaque to read (no dungeon): readable on foot, or from the ship's deck */
+  private readableStatues: { it: Interactable; x: number; y: number }[] = [];
   /** coming back from a statue's dungeon by ship: start at the helm */
   private boardOnStart = false;
   private inBattle = false;
@@ -97,6 +99,7 @@ export class MapScene extends Phaser.Scene {
     this.shipIt = null;
     this.sailing = false;
     this.statues = [];
+    this.readableStatues = [];
     this.boardOnStart = false;
     this.vignette = null;
     this.inBattle = false;
@@ -248,7 +251,9 @@ export class MapScene extends Phaser.Scene {
           const a = prop(s, 'arrive', '').split(',').map(Number);
           this.statues.push({ it, x: s.x, y: s.y, arrive: new Phaser.Math.Vector2(a.length === 2 ? a[0] : s.x, a.length === 2 ? a[1] : s.y + 10) });
         } else if (dialog) {
-          this.interactables.push({ kind: 'sign', rect, dialog, id: s.name });
+          const it: Interactable = { kind: 'sign', rect, dialog, id: s.name };
+          this.interactables.push(it);
+          this.readableStatues.push({ it, x: s.x, y: s.y });
         }
       } else if (s.type === 'sign' || s.type === 'chest') {
         this.interactables.push({ kind: s.type, rect, dialog: prop(s, 'dialog', ''), id: s.name });
@@ -376,7 +381,14 @@ export class MapScene extends Phaser.Scene {
     if (this.dialog) return this.advanceDialog();
     if (this.sailing) {
       const st = this.statueInReach();
-      return st ? this.openStatue(st, true) : this.goAshore();
+      if (st) return this.openStatue(st, true);
+      // statues with only a plaque (e.g. the Cyclops head on its tiny islet) can be read from the deck
+      const r = this.statueInReach(this.readableStatues);
+      if (r) {
+        this.dialog = { entry: dialogFor(r.dialog), line: 0, target: r, onClose: () => { this.player.frozen = true; } };
+        return this.renderDialog();
+      }
+      return this.goAshore();
     }
     const p = this.player.probe;
     let best: Interactable | null = null;
@@ -445,10 +457,10 @@ export class MapScene extends Phaser.Scene {
 
   // ---------------------------------------------------------------- statues with a dungeon (Circe's)
   /** A statue close enough to the ship's hull to step onto from the deck. */
-  private statueInReach() {
+  private statueInReach(list: { it: Interactable; x: number; y: number }[] = this.statues) {
     if (!this.ship) return null;
     const h = this.ship.hull;
-    return this.statues.find((st) => Phaser.Math.Distance.Between(st.x, st.y - 8,
+    return list.find((st) => Phaser.Math.Distance.Between(st.x, st.y - 8,
       Phaser.Math.Clamp(st.x, h.x, h.right), Phaser.Math.Clamp(st.y - 8, h.y, h.bottom)) <= 30)?.it ?? null;
   }
 

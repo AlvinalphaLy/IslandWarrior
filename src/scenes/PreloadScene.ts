@@ -29,6 +29,8 @@ export class PreloadScene extends Phaser.Scene {
     this.load.spritesheet('ship', 'assets/props/ship.png', { frameWidth: 128, frameHeight: 84 });
     // wooden horse statue on the beach (tools/make_horse_statue.py)
     this.load.image('horse_statue', 'assets/props/horse_statue.png');
+    // stone head of Polyphemus on the small south-east islet (tools/make_cyclops_head.py)
+    this.load.image('cyclops_head', 'assets/props/cyclops_head.png');
     // Circe's statue on the islet (tools/make_witch_statue.py): 2 frames of 16x32, glowing eyes
     this.load.spritesheet('witch_statue', 'assets/props/witch_statue.png', { frameWidth: 16, frameHeight: 32 });
   }

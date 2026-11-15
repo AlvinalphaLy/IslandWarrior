@@ -111,6 +111,7 @@ for cy in range(H):
 # collision. patch_map.py and verify_map.py read them from the map property `clearedAreas` and leave them alone.
 CLEARED_AREAS = [
     (266, 290, 342, 346),   # the islet in the bay: only Circe's statue stands there
+    (400, 336, 444, 364),   # the small south-east islet: its rock makes way for the Cyclops head
 ]
 def cleared(o):
     cx, cy = o['x'] + TS / 2, o['y'] + TS / 2
@@ -450,6 +451,13 @@ spawn_objs.append(dict(id=next_id(), name='circe_statue', type='statue', x=304.0
                                    dict(name='target', type='string', value='circe'),
                                    dict(name='arrive', type='string', value='286,335'),
                                    dict(name='footW', type='int', value=12), dict(name='footH', type='int', value=5)]))
+# the stone head of Polyphemus (tools/make_cyclops_head.py), half sunk into the small south-east islet, gazing at the
+# bay. Read it from the ship's deck. (x, y) = bottom centre of its rubble mound.
+spawn_objs.append(dict(id=next_id(), name='cyclops_head', type='statue', x=424.0, y=372.0, point=True, width=0, height=0,
+                       rotation=0, visible=True,
+                       properties=[dict(name='sprite', type='string', value='cyclops_head'),
+                                   dict(name='dialog', type='string', value='cyclops_head'),
+                                   dict(name='footW', type='int', value=26), dict(name='footH', type='int', value=9)]))
 sign_i = 0
 for g, members in groups.items():
     if any(m['sheet'] == 'village' and m['id'] in SIGNS for m in members):
