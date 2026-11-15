@@ -11,7 +11,9 @@ const HALF_W = 36; // 72px: the widest hull that still fits between the islets t
 const TOP = -6;
 const BOTTOM = 2;
 const CELL = 4;
-const MAX_SPEED = 44;
+/** top speed (px/s) and how quickly the ship reaches it / changes course, on ordinary maps */
+const MAX_SPEED = 58;
+const ACCEL = 2.5;
 
 /**
  * The black ship: a sailable boat. `pos` is the waterline centre. It moves only over water (the map's `water`
@@ -21,6 +23,10 @@ export class Ship {
   readonly sprite: Phaser.GameObjects.Sprite;
   readonly pos: Phaser.Math.Vector2;
   facingLeft = false;
+  /** px/s; a map can raise it (the Laestrygonian harbour does: see Harbor.ts) */
+  maxSpeed = MAX_SPEED;
+  /** how fast the ship eases toward the steering input (per second); higher = turns and stops more sharply */
+  accel = ACCEL;
   private vel = new Phaser.Math.Vector2();
   private water: Uint8Array;
   private gw: number;
@@ -97,9 +103,9 @@ export class Ship {
     const ix = (input.right ? 1 : 0) - (input.left ? 1 : 0);
     const iy = (input.down ? 1 : 0) - (input.up ? 1 : 0);
     const len = Math.hypot(ix, iy) || 1;
-    const k = Math.min(1, dt * 2.5); // ease in and out: a heavy galley, not a speedboat
-    this.vel.x += ((ix / len) * MAX_SPEED - this.vel.x) * k;
-    this.vel.y += ((iy / len) * MAX_SPEED * 0.75 - this.vel.y) * k;
+    const k = Math.min(1, dt * this.accel); // ease in and out: a heavy galley, not a speedboat
+    this.vel.x += ((ix / len) * this.maxSpeed - this.vel.x) * k;
+    this.vel.y += ((iy / len) * this.maxSpeed * 0.75 - this.vel.y) * k;
     if (ix) this.facingLeft = ix < 0;
     // move each axis separately; when blocked, slide sideways around the obstacle (up to 3px per frame),
     // so holding one direction finds its way through narrow channels instead of sticking on a corner

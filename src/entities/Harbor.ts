@@ -21,6 +21,8 @@ const RANGE = 230;            // giants only throw at a ship this close
 const FLIGHT_MS = 1150;       // boulder flight time (the shadow's warning)
 const HULL_DAMAGE = 6;
 const HIT_RADIUS = 13;        // landing this close to the hull (beyond its rectangle) still hits
+const SHIP_SPEED = 84;        // the ship's top speed in the harbour (58 elsewhere)
+const SHIP_ACCEL = 4.5;       // and how sharply it turns / stops (2.5 elsewhere)
 const prop = <T>(o: GiantSpawn, k: string, d: T): T => (o.properties?.find((p) => p.name === k)?.value as T) ?? d;
 
 export interface HarborHost {
@@ -47,6 +49,9 @@ export class Harbor {
       this.giants.push({ spr, next: scene.time.now + 2200 + prop(s, 'delay', 0), busy: false });
     }
     this.last.copy(host.ship.pos);
+    // the crew rows for their lives: much faster than at home, and quick to turn, so a change of course dodges
+    host.ship.maxSpeed = SHIP_SPEED;
+    host.ship.accel = SHIP_ACCEL;
   }
 
   update(time: number, delta: number) {
