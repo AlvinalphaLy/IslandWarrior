@@ -1,4 +1,4 @@
-"""Greek god skins (Zeus, Hermes, Hades, Heracles, Aphrodite) built from the LimeZu base sheets.
+"""Greek god skins (Zeus, Hermes, Hades, Heracles, Aphrodite), Odysseus and FaZe Odysseus, built from the LimeZu base sheets.
 
 Input : public/assets/sprites/<base>.png made by tools/import_characters.py
         (16x32 frames; row 0 = run, row 1 = idle; 6 frames per direction, order right, up, left, down)
@@ -87,7 +87,19 @@ GODS = {
         belt=ramp('9b6b12', 'f5d76e'),
         sandal=rgb('b07a2a'),
     ),
+    # FaZe Odysseus: the hero in the FaZe Clan colours (black, white, FaZe red), the prize for winning Circe's grotto.
+    # An original design in the brand colours; it does not reproduce the FaZe logo.
+    'faze': dict(
+        base='adam', legs='skirt',
+        hair=ramp('141418', '24242c', '34343e', '484854'),
+        skin=ramp('a86a44', 'c98b5e', 'e0a97c', 'f2c49a'),
+        top=ramp('0e0e12', '1c1c24', '2c2c36', '42424e'),
+        belt=ramp('9a0020', 'e4002b'),
+        sandal=rgb('1c1c24'),
+    ),
 }
+FAZE_RED = ramp('7a0018', 'b8001f', 'e4002b', 'ff5a6e')
+FAZE_BLACK = ramp('0a0a0e', '1c1c24', '34343e', '5a5a66')
 
 
 class Frame:
@@ -389,7 +401,7 @@ BRONZE = ramp('6e4a12', '9b6b12', 'c9962f', 'f5d76e')
 CREST = ramp('6a1216', 'a8242a', 'e04848')
 
 
-def crested_helmet(fr):
+def crested_helmet(fr, BRONZE=BRONZE, CREST=CREST):
     """Bronze helmet over the crown and down the cheeks, with a red horsehair crest running front to back."""
     top = fr.t + 1
     for y in range(top, top + 4):
@@ -433,7 +445,7 @@ def crested_helmet(fr):
         fr.put(back - s, fr.t + 1, CREST[1]); fr.put(back - s, fr.t + 2, CREST[0])   # tail hanging at the back
 
 
-def shield(fr):
+def shield(fr, BRONZE=BRONZE, boss_hi=None):
     """Round bronze shield on the left arm: in front when facing down, on the back facing up,
     behind the body in profile (drawn only where the body leaves the frame empty)."""
     disc = ['..ooo..', '.oaaao.', 'oaabaao', 'oabbbao', 'oaabaao', '.oaaao.', '..ooo..']
@@ -458,7 +470,7 @@ def shield(fr):
                 c = BRONZE[2]
             fr.put(x, y, c)
     if fr.d == 'down':  # boss highlight
-        fr.put(x0 + 3, y0 + 2, rgb('fff1b0'))
+        fr.put(x0 + 3, y0 + 2, boss_hi or rgb('fff1b0'))
 
 
 def decorate(god, fr):
@@ -473,6 +485,12 @@ def decorate(god, fr):
         lion_ears(fr); lion_cape(fr)
     elif god == 'aphrodite':
         rose(fr); belt(fr, spec['belt']); pearls(fr)
+    elif god == 'faze':
+        beard(fr, set(map(tuple, spec['skin'])), cols=GODS['odysseus']['hair'], short=True)   # his own brown beard
+        crested_helmet(fr, BRONZE=FAZE_BLACK, CREST=[FAZE_RED[0], FAZE_RED[1], FAZE_RED[2]])
+        sash(fr, FAZE_RED[2], FAZE_RED[1])                     # the red slash across the black armour
+        belt(fr, spec['belt'])
+        shield(fr, BRONZE=[FAZE_BLACK[0], FAZE_RED[1], FAZE_RED[2], FAZE_RED[3]], boss_hi=rgb('ffffff'))   # red, a white glint
     elif god == 'odysseus':
         beard(fr, set(map(tuple, spec['skin'])), cols=spec['hair'], short=True)
         crested_helmet(fr); belt(fr, spec['belt']); shield(fr)

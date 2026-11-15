@@ -80,7 +80,7 @@ const VICTORY_MS = 4200;
  *   wine  Maron's wine, the Cyclops' undoing: max HP +WINE_HP for good
  *   ship  the black ship rebuilt with a bronze hull and a crimson war sail: faster on every map, and in the
  *         Laestrygonian harbour faster still and taking half damage (registry `shipLevel`)
- *   skin  a new player skin (Circe's grotto: waiting on the design doc)
+ *   skin  the FaZe Odysseus skin (PLAYER_SKINS, unlock 'circe'): put on at once, then in the C cycle
  */
 const PRIZES: Record<string, 'wine' | 'ship' | 'skin'> = { cyclops: 'wine', telepylus: 'ship', circe: 'skin' };
 const WINE_HP = 10;
@@ -253,6 +253,13 @@ export class MapScene extends Phaser.Scene {
     if (first && prize === 'wine') {
       st.maxHp += WINE_HP;
       lines.push(`Prize: Maron's wine! Max HP +${WINE_HP} (now ${st.maxHp})`);
+    } else if (first && prize === 'skin') {
+      const skin = PLAYER_SKINS.find((k) => k.unlock === this.scene.key);
+      if (skin) {
+        this.player.setSheet(skin.key);
+        this.registry.set('playerSkin', skin.key);
+        lines.push(`Prize: the ${skin.name} skin! You're wearing it now (C to switch)`);
+      }
     } else if (first && prize === 'ship') {
       this.registry.set('shipLevel', Math.max(1, (this.registry.get('shipLevel') as number | undefined) ?? 0));
       lines.push('Prize: your ship is rebuilt with a bronze hull and a crimson sail: faster, and boulders do half damage');
@@ -532,11 +539,13 @@ export class MapScene extends Phaser.Scene {
     this.renderDialog();
   }
 
-  /** Cycle the player through PLAYER_SKINS (Odysseus, Adam and the Greek gods). */
+  /** Cycle the player through PLAYER_SKINS (Odysseus, Adam, the Greek gods, and prize skins once won). */
   private cycleSkin() {
     if (this.dialog || this.leaving) return;
-    const i = PLAYER_SKINS.findIndex((s) => s.key === this.player.sheet);
-    const next = PLAYER_SKINS[(i + 1) % PLAYER_SKINS.length];
+    const won = (this.registry.get('challengesWon') as string[] | undefined) ?? [];
+    const open = PLAYER_SKINS.filter((s) => !s.unlock || won.includes(s.unlock));
+    const i = open.findIndex((s) => s.key === this.player.sheet);
+    const next = open[(i + 1) % open.length];
     this.player.setSheet(next.key);
     this.registry.set('playerSkin', next.key);
     toast(next.name);
