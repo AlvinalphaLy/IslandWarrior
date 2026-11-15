@@ -1985,7 +1985,8 @@ export class MapScene extends Phaser.Scene {
    *   1. dawn breaks if it is night (the villagers are out), two narrator cards close the voyage
    *   2. the ship sails itself back to its mooring (steering like the player would; a fade if an islet blocks it)
    *   3. Odysseus steps ashore and walks, on a route found around houses, fences and statues, to Mira
-   *   4. Mira welcomes him home, then MISSIONS COMPLETE lists the trials and their prizes; E to play on
+   *   4. Mira welcomes him home and the narrator closes the voyage (both voiced), then MISSIONS COMPLETE lists the
+   *      trials and their prizes; E to play on
    */
   private checkHomecoming() {
     if (this.homecoming || this.scene.key !== 'village' || !this.ship) return;
@@ -2119,14 +2120,14 @@ export class MapScene extends Phaser.Scene {
       this.player.faceTowards(h.mira.x, h.mira.y);
       h.mira.faceTowards(this.player.x, this.player.y);
     }
-    // the dialog needs input: lift the cutscene lock while it shows, the player stays frozen
-    this.cutscene = false;
-    this.dialog = {
-      entry: dialogFor('homecoming_mira'),
-      line: 0,
-      onClose: () => this.missionsComplete(),
-    };
-    this.renderDialog();
+    // Mira's welcome and the narrator's last line, voiced (public/assets/voice/homecoming_mira.mp3, homecoming_3.mp3)
+    this.scene.pause();
+    narrate('homecoming_welcome', {
+      onClose: () => {
+        this.scene.resume();
+        this.missionsComplete();
+      },
+    });
   }
 
   private missionsComplete() {

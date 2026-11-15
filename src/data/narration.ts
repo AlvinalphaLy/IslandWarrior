@@ -231,3 +231,20 @@ NARRATION.homecoming = [
     text: 'Your crew takes up the oars one last time. Home, to the shore of Ithaca.',
   },
 ];
+
+/** The homecoming's end, at Mira's side (MapScene.homeArrived), before MISSIONS COMPLETE. Mira speaks in the
+ * Oracle's warm voice (the only female voice configured). */
+NARRATION.homecoming_welcome = [
+  {
+    key: 'homecoming_mira',
+    speaker: 'Mira',
+    voice: 'oracle',
+    text: 'Odysseus! The whole island watched the sea for your sail. Welcome home to Ithaca.',
+  },
+  {
+    key: 'homecoming_3',
+    speaker: 'Narrator',
+    voice: 'narrator',
+    text: 'And so the long voyage ends where it began. Odysseus is home.',
+  },
+];

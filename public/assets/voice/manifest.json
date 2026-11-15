@@ -404,5 +404,19 @@
     "provider": "ElevenLabs",
     "model": "eleven_multilingual_v2",
     "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "homecoming_mira": {
+    "hash": "06225c16caa2d7e8c570b14ccc9d99039586ffcb8bbee087c1996f275f48c928",
+    "file": "homecoming_mira.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "homecoming_3": {
+    "hash": "cbb525fcadf13b6ef22673cbb48d0b0c5e38475abc1d311672e1804510333bea",
+    "file": "homecoming_3.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
   }
 }
