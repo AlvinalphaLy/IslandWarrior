@@ -1,0 +1,15 @@
+node_modules
+dist
+cache
+
+# Third-party asset packs (not redistributed). The game only needs public/assets.
+# Place these folders back in the project root to re-run the tools/ scripts.
+/Fantasy Battlers - Free/
+/Fungus Cave*/
+/Serene_Village_revamped_v1.9/
+/vendor/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log

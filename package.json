@@ -1,0 +1,25 @@
+{
+  "name": "island-warrior",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "map": "python tools/reconstruct.py && python tools/build_map.py && python tools/verify_map.py",
+    "map:build": "python tools/build_map.py && python tools/verify_map.py",
+    "map:cave": "python tools/build_cave.py",
+    "characters": "python tools/import_characters.py && python tools/greek_skins.py",
+    "compare": "python tools/verify_map.py",
+    "smoke": "node tools/smoke.mjs"
+  },
+  "dependencies": {
+    "phaser": "3.80.1"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^23.6.0",
+    "typescript": "5.6.3",
+    "vite": "5.4.10"
+  }
+}
