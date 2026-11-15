@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <meta charset="utf-8" /><meta
+    name="viewport"
+    content="width=device-width,initial-scale=1"
+  /><title>IslandWarrior integration harness</title>
+  <style>
+    body {
+      font: 17px system-ui;
+      max-width: 850px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #101d2a;
+      color: #eee;
+    }
+    button {
+      padding: 12px;
+      margin: 5px;
+      font: inherit;
+    }
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      background: #192c3b;
+      padding: 20px;
+    }
+    a {
+      color: #aacfff;
+    }
+  </style>
+  <h1>Integration harness</h1>
+  <p>
+    Test events only. These are not real gameplay or verified Chert gestures. Memory storage
+    disappears on API restart; configure Tiger Data for persistence.
+  </p>
+  <button id="start">Start test run</button
+  ><button id="event" disabled>Record test damage</button
+  ><button id="finish" disabled>Finish test run</button
+  ><button id="recap" disabled>Fetch recap</button>
+  <pre id="output" aria-live="polite">Ready</pre>
+  <script type="module">
+    let run;
+    let started;
+    const out = document.querySelector('#output');
+    const buttons = Object.fromEntries(
+      ['start', 'event', 'finish', 'recap'].map((x) => [x, document.getElementById(x)]),
+    );
+    function show(x) {
+      out.textContent = JSON.stringify(x, null, 2);
+    }
+    async function api(path, method = 'GET', data) {
+      const r = await fetch('/api' + path, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(run ? { Authorization: 'Bearer ' + run.token } : {}),
+        },
+        body: data ? JSON.stringify(data) : undefined,
+        signal: AbortSignal.timeout(5000),
+      });
+      const value = await r.json();
+      if (!r.ok) throw new Error(value.error);
+      return value;
+    }
+    buttons.start.onclick = async () => {
+      buttons.start.disabled = true;
+      try {
+        run = await api('/runs', 'POST');
+        started = performance.now();
+        buttons.event.disabled = false;
+        buttons.finish.disabled = false;
+        buttons.recap.disabled = false;
+        show({ id: run.id, status: 'Test run started; token kept in memory only' });
+      } catch (e) {
+        show(e.message);
+        buttons.start.disabled = false;
+      }
+    };
+    // Preserve event ID across an uncertain response so retries remain idempotent.
+    let pendingEvent;
+    buttons.event.onclick = async () => {
+      buttons.event.disabled = true;
+      pendingEvent ??= {
+        id: crypto.randomUUID(),
+        occurredAt: new Date().toISOString(),
+        elapsedMs: Math.floor(performance.now() - started),
+        action: 'damage_taken',
+        source: 'harness',
+        phase: 'test',
+        value: 3,
+      };
+      try {
+        show(await api('/runs/' + run.id + '/events', 'POST', { events: [pendingEvent] }));
+        pendingEvent = undefined;
+      } catch (e) {
+        show(e.message + ' — retry this event before finishing');
+      } finally {
+        buttons.event.disabled = false;
+      }
+    };
+    buttons.finish.onclick = async () => {
+      if (pendingEvent) {
+        show('Retry the pending event before finishing.');
+        return;
+      }
+      buttons.finish.disabled = true;
+      buttons.event.disabled = true;
+      try {
+        show(await api('/runs/' + run.id + '/finish', 'POST', { outcome: 'victory' }));
+        buttons.start.disabled = false;
+      } catch (e) {
+        show(e.message);
+        buttons.finish.disabled = false;
+      }
+    };
+    buttons.recap.onclick = async () => {
+      try {
+        show(await api('/runs/' + run.id + '/recap'));
+      } catch (e) {
+        show(e.message);
+      }
+    };
+  </script>
+</html>

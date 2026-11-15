@@ -14,8 +14,10 @@ npm run dev        # http://localhost:5173
 | WASD / Arrows | Move |
 | E / Space / Enter | Talk to an NPC, read a sign, advance dialog |
 | Walk up into a house door | Red house (left, where you start) → **Telemachus training room** (sewer dungeon). Green fenced house (bottom-right) → **Fungus Cave**. The other four are locked until their dungeons exist. |
-| Talk to the black ship (stand on the beach shore, press E) | The dragon raid entry. It sails to the `lair` scene once `achilles` is in the registry's `unlocks`; until then the crew tells you to beat Achilles. |
+| Board the black ship (stand on the beach by it, press E) | Sail it with WASD / arrows: it only moves on open water, turns to face its heading and leaves a wake. Press E near any shore to step off; the ship stays where you left it. Sailing off the south edge of the map is the voyage to the `lair` scene, once `achilles` is in the registry's `unlocks`; until then the crew refuses. Coming home lands you on the beach with the ship back at its mooring. |
+| Circe's statue (the islet in the bay) | Sail up beside the islet and press E from the ship, or land and press E facing it. You enter **Circe's grotto** (`circe` map: `npm run map:circe`, a violet variant of the sewer dungeon with sirens, shades and a chest of moly). The ladder brings you back where you came from: at the helm if you came by ship, otherwise beside the statue. |
 | Walk up into a ladder | Climbs back out through the door you came in by |
+| Win a statue challenge | Crushing Polyphemus (Cyclops den) or beating the Siren (Circe's grotto) hands you that dungeon's hoard and returns you to the ship's helm automatically, however you arrived. The bosses and chests are listed in `CHALLENGES` in `src/scenes/MapScene.ts`. |
 | Touch a monster (dungeon) | Starts a battle. **1–4** or the arrow keys + Enter choose Attack / Defend / Potion / Run. |
 | C | Change the player's skin: Adam → Zeus → Hermes → Hades → Heracles → Aphrodite |
 | M | Toggle whole-map overview |
@@ -37,11 +39,13 @@ The reference is an exact 2× upscale of 16px art, which works out to a 44×25 t
    - `Objects`: free-placed tile objects. Each has `sortY` (its depth-sort baseline) and `z` (its draw order in the reference).
    - `Collision`: rectangles for the water mask, tree trunks, house walls, fences and cliffs, and rocks, bushes and props.
    - `Spawns`: the player, NPCs (`sprite`, `dialog`, `wander` properties), doors and signs.
-3. **`tools/verify_map.py`**: re-renders `village.json` the same way the game does and diffs it against the reference. Current result: **95.7% pixel-identical**, not counting the open water, which animates in-game instead of matching the static waves. Outputs go to `cache/verify_*.png`.
+3. **`tools/patch_map.py`**: makes the map pixel-exact. Real tileset art covers about 95% of the map. The pixels that still differ (canopy overlaps in the dense forests, and the reference's non-repeating water waves) are copied from the reference into `public/assets/tilesets/patch.png`. Ground pixels go into a `Ground3` tile layer. Pixels on trees, houses and props become patch objects with the same `sortY` as the object they sit on, so depth sorting with characters still works. Water cells are copied whole, so the village shows the reference's static waves instead of the animated water. About 5% of the map's pixels are copied this way.
+4. **`tools/viking_houses.py`**: replaces the six houses with Viking longhouses drawn in code: shingled or turf roofs with crossed gable boards, plank walls, shields, iron-banded doors, stone foundations. Each house keeps its colour (rust-red, slate-blue, or a green turf roof), its footprint, its door position, its depth and its collision, so the doors and dungeons work as before. It also repaints the door-open animation (`tilesets/door.png`). Tiles go to `tilesets/viking.png`, and the house areas are saved in the map property `customArt`.
+5. **`tools/verify_map.py`**: re-renders `village.json` the same way the game does and diffs it against the reference, leaving out the `customArt` areas. Current result: **99.99% pixel-identical outside the Viking houses**, which cover 7.2% of the map. Outputs go to `cache/verify_*.png`.
 
 ```
 npm run map        # full rebuild (about 3 min): reconstruct, build, verify
-npm run map:build  # rebuild Tiled JSON + collision only
+npm run map:build  # rebuild Tiled JSON + collision + patch (skips the slow reconstruction)
 npm run compare    # verify only
 npm run map:cave   # rebuild the cave map
 npm run map:dungeon # rebuild the sewer dungeon
@@ -107,7 +111,34 @@ Cave characters use RPG Maker layout (3×4 frames of 16×32). `CHARACTER_SHEETS`
 
 ## Known gaps
 
-- The reference water's wave pattern isn't a repeating tile, so the game uses the pack's animated water instead.
-- About 4% of non-water pixels differ, mostly where tree canopies overlap in the dense forests. Trees partly hidden by other trees get approximate trunk collision.
+- The village water is static, copied from the reference. Its wave pattern isn't a repeating tile, so it can't use the pack's animated water and still match. The cave and dungeon are unaffected.
+- Trees partly hidden by other trees get approximate trunk collision.
 - Door destinations are set in `DOOR_TARGETS` in `tools/build_map.py`; houses not listed are locked. Run `npm run map:build` after changing it.
 - Fantasy Battlers is a free sample pack; its README asks you to consider buying the full asset. Check its license before any commercial use.
+
+## Chert, Tiger Data and Vultr integrations
+
+The separate Oracle agent, local API, event harness and deployment configuration are documented in [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md). Gameplay integration is exposed through explicit hooks for the gameplay owner; existing scenes and controls are unchanged.
+
+For the navy-and-bronze voiced story popup, open `/narration-preview.html` while Vite is running. See [docs/NARRATION.md](docs/NARRATION.md) for ElevenLabs generation and scene hooks. Fixed clips play locally; provider keys stay out of the browser.
+
+## Homecoming story
+
+The current story starts when the player boards the black ship. Circe’s island is the first playable stop for supplies, with story cues emitted for the teammate-owned UI. The earlier NPC checklist is retired. See [docs/STORY.md](docs/STORY.md) for the script, triggers and integration contract.
+
+## Code formatting
+
+Use two-space indentation for TypeScript, JavaScript, HTML, CSS and YAML, and four spaces for Python. Important methods include comments explaining intent and lifecycle behavior.
+
+```sh
+npm run format
+npm run format:check
+```
+
+Python scripts use Black (`requirements-dev.txt`): `python3 -m black tools/` and `python3 -m black --check tools/`. Formatter configuration excludes generated maps, assets, lockfiles and private environment files. `.editorconfig` carries the indentation settings into compatible editors.
+
+## Voiced Odyssey story
+
+Board the black ship with **E** to hear the opening story. Visit the Circe, Cyclops and Homer statues to play their island challenges. Story captions and ElevenLabs voices follow actual discoveries, wins and failures. Success narration waits until the victory banner and automatic boat return finish. In the Cyclops den, pick up the bow and press **F** from the chalk mark to shoot.
+
+Keep `npm run dev` running while testing. Use the terminal’s Local URL. **E/Space** reveals a story line and advances it; **Escape** skips the current batch. The speaker control unmutes narration. See [story and integration notes](docs/STORY.md) and [merge review](docs/MERGE_REVIEW.md). Run `npm run smoke:challenges` for all three challenge paths, or `npm run smoke:story` for the boat/Circe narration flow. Existing low-level gameplay smoke uses `?story=off`.

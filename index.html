@@ -1,100 +1,397 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-  <title>Island Warrior</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 fill=%22%234f9be0%22/%3E%3Crect x=%223%22 y=%225%22 width=%2210%22 height=%228%22 fill=%22%2378c850%22/%3E%3C/svg%3E" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&display=swap" rel="stylesheet" />
-  <style>
-    html, body { margin: 0; height: 100%; background: #1b1f2a; overflow: hidden; }
-    body { font-family: 'Pixelify Sans', ui-monospace, monospace; color: #fdf6e3; }
-    #game { position: fixed; inset: 0; }
-    canvas { image-rendering: pixelated; }
-    #ui { position: fixed; inset: 0; pointer-events: none; }
-    #dialog {
-      position: absolute; left: 50%; bottom: 4vh; transform: translateX(-50%);
-      width: min(720px, calc(100vw - 32px)); box-sizing: border-box;
-      background: #3b2a24ee; border: 4px solid #e9c46a; border-radius: 6px;
-      box-shadow: 0 0 0 4px #2a1d18, 0 8px 24px #0008;
-      padding: 14px 18px 12px; font-size: clamp(16px, 2.4vw, 22px); line-height: 1.35; display: none;
-    }
-    #dialog .name { color: #e9c46a; font-weight: 600; margin-bottom: 4px; }
-    #dialog .more { position: absolute; right: 12px; bottom: 6px; font-size: 14px; opacity: .8; animation: blink 1s steps(2) infinite; }
-    @keyframes blink { 50% { opacity: 0; } }
-    #hint {
-      position: absolute; left: 12px; top: 10px; font-size: 14px; background: #0007; padding: 6px 10px;
-      border-radius: 4px; line-height: 1.5;
-    }
-    #toast {
-      position: absolute; left: 50%; top: 14px; transform: translateX(-50%); background: #2a9d8fee;
-      padding: 8px 14px; border-radius: 4px; font-size: 16px; display: none;
-    }
-    #dpad { position: absolute; left: 16px; bottom: 16px; width: 150px; height: 150px; display: none; pointer-events: auto; }
-    #dpad button, #act {
-      position: absolute; width: 50px; height: 50px; border: 0; border-radius: 10px; background: #fff3; color: #fff;
-      font-size: 22px; touch-action: none; user-select: none; -webkit-user-select: none;
-    }
-    #dpad [data-d=up] { left: 50px; top: 0; } #dpad [data-d=down] { left: 50px; top: 100px; }
-    #dpad [data-d=left] { left: 0; top: 50px; } #dpad [data-d=right] { left: 100px; top: 50px; }
-    #act { right: 24px; bottom: 50px; width: 64px; height: 64px; border-radius: 50%; display: none; pointer-events: auto; font-family: inherit; }
-    @media (pointer: coarse) { #dpad, #act { display: block; } #hint { display: none; } }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Island Warrior</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22%3E%3Crect width=%2216%22 height=%2216%22 fill=%22%234f9be0%22/%3E%3Crect x=%223%22 y=%225%22 width=%2210%22 height=%228%22 fill=%22%2378c850%22/%3E%3C/svg%3E"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #1b1f2a;
+        overflow: hidden;
+      }
+      body {
+        font-family: 'Pixelify Sans', ui-monospace, monospace;
+        color: #fdf6e3;
+      }
+      #game {
+        position: fixed;
+        inset: 0;
+      }
+      canvas {
+        image-rendering: pixelated;
+      }
+      #ui {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+      }
+      #dialog {
+        position: absolute;
+        left: 50%;
+        bottom: 4vh;
+        transform: translateX(-50%);
+        width: min(720px, calc(100vw - 32px));
+        box-sizing: border-box;
+        background: #3b2a24ee;
+        border: 4px solid #e9c46a;
+        border-radius: 6px;
+        box-shadow:
+          0 0 0 4px #2a1d18,
+          0 8px 24px #0008;
+        padding: 14px 18px 12px;
+        font-size: clamp(16px, 2.4vw, 22px);
+        line-height: 1.35;
+        display: none;
+      }
+      #dialog .name {
+        color: #e9c46a;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+      #dialog .more {
+        position: absolute;
+        right: 12px;
+        bottom: 6px;
+        font-size: 14px;
+        opacity: 0.8;
+        animation: blink 1s steps(2) infinite;
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+      #hint {
+        position: absolute;
+        left: 12px;
+        top: 10px;
+        font-size: 14px;
+        background: #0007;
+        padding: 6px 10px;
+        border-radius: 4px;
+        line-height: 1.5;
+      }
+      #toast {
+        position: absolute;
+        left: 50%;
+        top: 14px;
+        transform: translateX(-50%);
+        background: #2a9d8fee;
+        padding: 8px 14px;
+        border-radius: 4px;
+        font-size: 16px;
+        display: none;
+      }
+      #dpad {
+        position: absolute;
+        left: 16px;
+        bottom: 16px;
+        width: 150px;
+        height: 150px;
+        display: none;
+        pointer-events: auto;
+      }
+      #dpad button,
+      #act {
+        position: absolute;
+        width: 50px;
+        height: 50px;
+        border: 0;
+        border-radius: 10px;
+        background: #fff3;
+        color: #fff;
+        font-size: 22px;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      #dpad [data-d='up'] {
+        left: 50px;
+        top: 0;
+      }
+      #dpad [data-d='down'] {
+        left: 50px;
+        top: 100px;
+      }
+      #dpad [data-d='left'] {
+        left: 0;
+        top: 50px;
+      }
+      #dpad [data-d='right'] {
+        left: 100px;
+        top: 50px;
+      }
+      #act {
+        right: 24px;
+        bottom: 50px;
+        width: 64px;
+        height: 64px;
+        border-radius: 50%;
+        display: none;
+        pointer-events: auto;
+        font-family: inherit;
+      }
+      #bow {
+        position: absolute;
+        right: 100px;
+        bottom: 24px;
+        width: 52px;
+        height: 52px;
+        border: 0;
+        border-radius: 50%;
+        background: #fff3;
+        color: #fff;
+        font: 600 15px inherit;
+        font-family: inherit;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        display: none;
+        pointer-events: auto;
+      }
+      @media (pointer: coarse) {
+        #dpad,
+        #act,
+        #bow {
+          display: block;
+        }
+        #hint {
+          display: none;
+        }
+      }
 
-    #hud {
-      position: absolute; right: 12px; top: 10px; background: #0009; padding: 6px 10px; border-radius: 4px;
-      font-size: 15px; display: flex; gap: 12px; align-items: center;
-    }
-    #hud .hpbar { width: 80px; height: 8px; background: #3a1f1f; border-radius: 2px; overflow: hidden; }
-    #hud .hpbar i { display: block; height: 100%; background: #e05d5d; }
+      /* a challenge won: shown for a few seconds before the trip back to the island (ui.ts showVictory) */
+      #victory {
+        position: absolute;
+        left: 50%;
+        top: 42%;
+        transform: translate(-50%, -50%) scale(0.9);
+        display: none;
+        opacity: 0;
+        width: min(560px, calc(100vw - 32px));
+        box-sizing: border-box;
+        text-align: center;
+        padding: 18px 22px 16px;
+        background: radial-gradient(ellipse at 50% 0%, #6b4a1ef2, #2a1d18f2 70%);
+        border: 4px solid #e9c46a;
+        border-radius: 8px;
+        box-shadow:
+          0 0 0 4px #2a1d18,
+          0 0 40px #e9c46a66,
+          0 10px 30px #000a;
+        transition:
+          opacity 0.35s,
+          transform 0.35s;
+      }
+      #victory.show {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+      #victory .title {
+        font-size: clamp(30px, 6vw, 52px);
+        font-weight: 600;
+        letter-spacing: 6px;
+        color: #ffe08a;
+        text-shadow:
+          0 3px 0 #7a4a12,
+          0 0 18px #ffcf5a88;
+      }
+      #victory .sub {
+        font-size: clamp(16px, 2.6vw, 22px);
+        color: #fdf6e3;
+        margin: 4px 0 10px;
+      }
+      #victory ul {
+        list-style: none;
+        margin: 0 0 12px;
+        padding: 0;
+        font-size: clamp(14px, 2.2vw, 18px);
+        color: #a8e6a1;
+        line-height: 1.5;
+      }
+      #victory .back {
+        font-size: 14px;
+        opacity: 0.85;
+      }
+      #victory .bar {
+        height: 6px;
+        margin-top: 6px;
+        background: #0006;
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      #victory .bar i {
+        display: block;
+        height: 100%;
+        width: 0;
+        background: #e9c46a;
+      }
 
-    #battle {
-      position: absolute; left: 50%; bottom: 3vh; transform: translateX(-50%); display: none; pointer-events: auto;
-      width: min(760px, calc(100vw - 32px)); box-sizing: border-box; background: #1a0f0bee; border: 4px solid #e9c46a;
-      border-radius: 6px; box-shadow: 0 0 0 4px #0d0705, 0 8px 24px #0008; padding: 12px 16px; font-size: clamp(14px, 2vw, 19px);
-    }
-    #battle .bars { display: flex; gap: 24px; justify-content: space-between; margin-bottom: 8px; }
-    #battle .who { flex: 1; }
-    #battle .who .n { color: #e9c46a; font-weight: 600; }
-    #battle .bar { height: 10px; background: #3a2a2a; border-radius: 2px; overflow: hidden; margin-top: 3px; }
-    #battle .bar i { display: block; height: 100%; background: #7cfc9a; transition: width .3s; }
-    #battle .foe .bar i { background: #e05d5d; }
-    #battle .log { min-height: 2.6em; line-height: 1.3; margin-bottom: 8px; }
-    #battle .cmds { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-    #battle button {
-      font: inherit; color: #fdf6e3; background: #6e2f18; border: 2px solid #a8542a; border-radius: 4px; padding: 6px 4px; cursor: pointer;
-    }
-    #battle button.sel { border-color: #e9c46a; background: #9a4522; }
-    #battle button:disabled { opacity: .45; cursor: default; }
-    #battle kbd { opacity: .6; font-size: .8em; margin-right: 4px; }
-  </style>
-</head>
-<body>
-  <div id="game"></div>
-  <div id="ui">
-    <div id="hint">WASD / Arrows: move &nbsp;·&nbsp; E / Space: talk<br />C: change skin &nbsp;·&nbsp; M: map overview &nbsp;·&nbsp; F1: collision debug</div>
-    <div id="toast"></div>
-    <div id="dialog"><div class="name"></div><div class="text"></div><div class="more">▼</div></div>
-    <div id="dpad">
-      <button data-d="up">▲</button><button data-d="left">◀</button>
-      <button data-d="right">▶</button><button data-d="down">▼</button>
-    </div>
-    <button id="act">E</button>
-    <div id="hud"></div>
-    <div id="battle">
-      <div class="bars">
-        <div class="who me"><span class="n">You</span> <span class="v"></span><div class="bar"><i></i></div></div>
-        <div class="who foe"><span class="n"></span> <span class="v"></span><div class="bar"><i></i></div></div>
+      #hud {
+        position: absolute;
+        right: 12px;
+        top: 10px;
+        background: #0009;
+        padding: 6px 10px;
+        border-radius: 4px;
+        font-size: 15px;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+      }
+      #hud .hpbar {
+        width: 80px;
+        height: 8px;
+        background: #3a1f1f;
+        border-radius: 2px;
+        overflow: hidden;
+      }
+      #hud .hpbar i {
+        display: block;
+        height: 100%;
+        background: #e05d5d;
+      }
+
+      #battle {
+        position: absolute;
+        left: 50%;
+        bottom: 3vh;
+        transform: translateX(-50%);
+        display: none;
+        pointer-events: auto;
+        width: min(760px, calc(100vw - 32px));
+        box-sizing: border-box;
+        background: #1a0f0bee;
+        border: 4px solid #e9c46a;
+        border-radius: 6px;
+        box-shadow:
+          0 0 0 4px #0d0705,
+          0 8px 24px #0008;
+        padding: 12px 16px;
+        font-size: clamp(14px, 2vw, 19px);
+      }
+      #battle .bars {
+        display: flex;
+        gap: 24px;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+      #battle .who {
+        flex: 1;
+      }
+      #battle .who .n {
+        color: #e9c46a;
+        font-weight: 600;
+      }
+      #battle .bar {
+        height: 10px;
+        background: #3a2a2a;
+        border-radius: 2px;
+        overflow: hidden;
+        margin-top: 3px;
+      }
+      #battle .bar i {
+        display: block;
+        height: 100%;
+        background: #7cfc9a;
+        transition: width 0.3s;
+      }
+      #battle .foe .bar i {
+        background: #e05d5d;
+      }
+      #battle .log {
+        min-height: 2.6em;
+        line-height: 1.3;
+        margin-bottom: 8px;
+      }
+      #battle .cmds {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+      }
+      #battle button {
+        font: inherit;
+        color: #fdf6e3;
+        background: #6e2f18;
+        border: 2px solid #a8542a;
+        border-radius: 4px;
+        padding: 6px 4px;
+        cursor: pointer;
+      }
+      #battle button.sel {
+        border-color: #e9c46a;
+        background: #9a4522;
+      }
+      #battle button:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+      #battle kbd {
+        opacity: 0.6;
+        font-size: 0.8em;
+        margin-right: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game"></div>
+    <div id="ui">
+      <div id="hint">
+        WASD / Arrows: move &nbsp;·&nbsp; E / Space: talk<br />F: shoot (once you have the bow)
+        &nbsp;·&nbsp; C: change skin &nbsp;·&nbsp; M: map overview &nbsp;·&nbsp; F1: collision debug
       </div>
-      <div class="log"></div>
-      <div class="cmds">
-        <button data-c="attack"><kbd>1</kbd>Attack</button>
-        <button data-c="defend"><kbd>2</kbd>Defend</button>
-        <button data-c="potion"><kbd>3</kbd>Ambrosia</button>
-        <button data-c="run"><kbd>4</kbd>Run</button>
+      <div id="toast"></div>
+      <div id="dialog">
+        <div class="name"></div>
+        <div class="text"></div>
+        <div class="more">▼</div>
+      </div>
+      <div id="dpad">
+        <button data-d="up">▲</button><button data-d="left">◀</button>
+        <button data-d="right">▶</button><button data-d="down">▼</button>
+      </div>
+      <button id="act">E</button>
+      <button id="bow">Bow</button>
+      <div id="hud"></div>
+      <div id="victory">
+        <div class="title">VICTORY</div>
+        <div class="sub"></div>
+        <ul></ul>
+        <div class="back">Returning to the island...</div>
+        <div class="bar"><i></i></div>
+      </div>
+      <div id="battle">
+        <div class="bars">
+          <div class="who me">
+            <span class="n">You</span> <span class="v"></span>
+            <div class="bar"><i></i></div>
+          </div>
+          <div class="who foe">
+            <span class="n"></span> <span class="v"></span>
+            <div class="bar"><i></i></div>
+          </div>
+        </div>
+        <div class="log"></div>
+        <div class="cmds">
+          <button data-c="attack"><kbd>1</kbd>Attack</button>
+          <button data-c="defend"><kbd>2</kbd>Defend</button>
+          <button data-c="potion"><kbd>3</kbd>Ambrosia</button>
+          <button data-c="run"><kbd>4</kbd>Run</button>
+        </div>
       </div>
     </div>
-  </div>
-  <script type="module" src="/src/main.ts"></script>
-</body>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
 </html>

@@ -14,5 +14,12 @@ cache
 Thumbs.db
 *.log
 
+# Integration credentials and nested projects
+.env*
+!.env.example
+**/node_modules/
+
+# Interrupted narration audio generation
+public/assets/voice/*.partial
 # generated team docs (PDFs)
 docs/

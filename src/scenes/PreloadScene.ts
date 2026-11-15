@@ -2,8 +2,21 @@ import Phaser from 'phaser';
 import { CHARACTER_SHEETS, FRAME_H, FRAME_W } from '../entities/Character';
 import { BATTLER_FILES, GREEK_SHEETS, START_STATS } from '../data/enemies';
 
-export const MAPS = ['village', 'cave', 'dungeon'];
-export const TILESETS = ['village', 'water', 'campfire', 'door', 'auto', 'cave', 'sewer'];
+export const MAPS = ['village', 'cave', 'dungeon', 'circe', 'cyclops', 'telepylus'];
+export const TILESETS = [
+  'village',
+  'water',
+  'campfire',
+  'door',
+  'auto',
+  'cave',
+  'sewer',
+  'patch',
+  'viking',
+  'grotto',
+  'shore',
+  'harbor',
+];
 
 /** Loads every map, tileset and character once, then starts the village. */
 export class PreloadScene extends Phaser.Scene {
@@ -15,32 +28,130 @@ export class PreloadScene extends Phaser.Scene {
     for (const m of MAPS) this.load.tilemapTiledJSON(m, `assets/maps/${m}.json`);
     for (const t of TILESETS) {
       this.load.image(t, `assets/tilesets/${t}.png`);
-      this.load.spritesheet(`${t}_ss`, `assets/tilesets/${t}.png`, { frameWidth: 16, frameHeight: 16 });
+      this.load.spritesheet(`${t}_ss`, `assets/tilesets/${t}.png`, {
+        frameWidth: 16,
+        frameHeight: 16,
+      });
     }
     for (const c of Object.keys(CHARACTER_SHEETS)) {
-      this.load.spritesheet(c, `assets/sprites/${c}.png`, { frameWidth: FRAME_W, frameHeight: FRAME_H });
+      this.load.spritesheet(c, `assets/sprites/${c}.png`, {
+        frameWidth: FRAME_W,
+        frameHeight: FRAME_H,
+      });
     }
     for (const b of BATTLER_FILES) this.load.image(`battler_${b}`, `assets/battlers/${b}.png`);
     for (const [k, f] of Object.entries(GREEK_SHEETS)) {
-      this.load.spritesheet(k, `assets/greek/${k.slice(3)}.png`, { frameWidth: f.w, frameHeight: f.h });
+      this.load.spritesheet(k, `assets/greek/${k.slice(3)}.png`, {
+        frameWidth: f.w,
+        frameHeight: f.h,
+      });
     }
     this.load.image('cave_bg', 'assets/greek/cave_bg.png');
     // ship of Odysseus (tools/make_ship.py): 4 frames of 128x84, waterline at y=66
     this.load.spritesheet('ship', 'assets/props/ship.png', { frameWidth: 128, frameHeight: 84 });
+    // the upgraded ship (prize for escaping Telepylus): crimson sail, bronze hull (tools/make_ship_upgrade.py)
+    this.load.spritesheet('ship_bronze', 'assets/props/ship_bronze.png', {
+      frameWidth: 128,
+      frameHeight: 84,
+    });
+    // wooden horse statue on the beach (tools/make_horse_statue.py)
+    this.load.image('horse_statue', 'assets/props/horse_statue.png');
+    // stone head of Polyphemus on the small south-east islet (tools/make_cyclops_head.py)
+    // frames: 0 dormant, 1-2 awake (jaw open, eye blazing / glowing)
+    this.load.spritesheet('cyclops_head', 'assets/props/cyclops_head.png', {
+      frameWidth: 32,
+      frameHeight: 34,
+    });
+    // the amphora of Maron's wine beside it: pour it into the mouth to wake the head (tools/make_amphora.py)
+    this.load.spritesheet('amphora', 'assets/props/amphora.png', {
+      frameWidth: 14,
+      frameHeight: 19,
+    });
+    // the archery puzzle in the Cyclops cave (tools/make_archery_props.py, src/entities/Archery.ts)
+    for (const k of ['arrow', 'bow', 'axe', 'boulder', 'bridge'])
+      this.load.image(k, `assets/props/${k}.png`);
+    this.load.spritesheet('target', 'assets/props/target.png', { frameWidth: 14, frameHeight: 22 });
+    this.load.spritesheet('sheep', 'assets/props/sheep.png', { frameWidth: 18, frameHeight: 15 });
+    // the Laestrygonians (tools/make_laestrygon_props.py, src/entities/Harbor.ts): Homer's statue on the narrow islet,
+    // who sings you into their tale (0 marble, 1 lyre turned gold), the giants on the harbour cliffs (0 rock overhead,
+    // 1 thrown), and their rocks
+    this.load.spritesheet('homer', 'assets/props/homer.png', { frameWidth: 20, frameHeight: 40 });
+    this.load.spritesheet('giant', 'assets/props/giant.png', { frameWidth: 26, frameHeight: 28 });
+    this.load.image('rock', 'assets/props/rock.png');
+    // Circe's statue on the islet (tools/make_witch_statue.py): 2 frames of 16x32, glowing eyes
+    // the treasure chest that lures you to Circe's islet (tools/make_treasure_chest.py): closed / open, 24x20
+    this.load.spritesheet('treasure_chest', 'assets/props/treasure_chest.png', {
+      frameWidth: 24,
+      frameHeight: 20,
+    });
+    this.load.spritesheet('witch_statue', 'assets/props/witch_statue.png', {
+      frameWidth: 16,
+      frameHeight: 32,
+    });
   }
 
   create() {
-    this.anims.create({ key: 'campfire', frames: this.anims.generateFrameNumbers('campfire_ss', {}), frameRate: 9, repeat: -1 });
-    this.anims.create({ key: 'door-open', frames: this.anims.generateFrameNumbers('door_ss', { start: 0, end: 3 }), frameRate: 12 });
-    this.anims.create({ key: 'ship-idle', frames: this.anims.generateFrameNumbers('ship', { start: 0, end: 3 }), frameRate: 4, repeat: -1 });
+    this.anims.create({
+      key: 'campfire',
+      frames: this.anims.generateFrameNumbers('campfire_ss', {}),
+      frameRate: 9,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: 'door-open',
+      frames: this.anims.generateFrameNumbers('door_ss', { start: 0, end: 3 }),
+      frameRate: 12,
+    });
+    this.anims.create({
+      key: 'witch_statue-idle',
+      frames: this.anims.generateFrameNumbers('witch_statue', { start: 0, end: 1 }),
+      frameRate: 1.5,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: 'cyclops_head-idle',
+      frames: this.anims.generateFrameNumbers('cyclops_head', { frames: [1, 2] }),
+      frameRate: 1.2,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: 'ship-idle',
+      frames: this.anims.generateFrameNumbers('ship', { start: 0, end: 3 }),
+      frameRate: 4,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: 'ship_bronze-idle',
+      frames: this.anims.generateFrameNumbers('ship_bronze', { start: 0, end: 3 }),
+      frameRate: 4,
+      repeat: -1,
+    });
     // idle loop for every animated Greek enemy (frames 0-1), used on the map and in battle
     for (const k of Object.keys(GREEK_SHEETS)) {
       if (k === 'gk_fx' || k === 'gk_odysseus') continue;
-      this.anims.create({ key: `${k}-idle`, frames: this.anims.generateFrameNumbers(k, { frames: [0, 1] }), frameRate: 2.5, repeat: -1 });
+      this.anims.create({
+        key: `${k}-idle`,
+        frames: this.anims.generateFrameNumbers(k, { frames: [0, 1] }),
+        frameRate: 2.5,
+        repeat: -1,
+      });
     }
-    this.anims.create({ key: 'gk_odysseus-idle', frames: this.anims.generateFrameNumbers('gk_odysseus', { frames: [0, 1] }), frameRate: 2, repeat: -1 });
-    this.anims.create({ key: 'fx-slash', frames: this.anims.generateFrameNumbers('gk_fx', { frames: [0, 1, 2] }), frameRate: 20 });
-    this.anims.create({ key: 'fx-impact', frames: this.anims.generateFrameNumbers('gk_fx', { frames: [3, 4, 5] }), frameRate: 18 });
+    this.anims.create({
+      key: 'gk_odysseus-idle',
+      frames: this.anims.generateFrameNumbers('gk_odysseus', { frames: [0, 1] }),
+      frameRate: 2,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: 'fx-slash',
+      frames: this.anims.generateFrameNumbers('gk_fx', { frames: [0, 1, 2] }),
+      frameRate: 20,
+    });
+    this.anims.create({
+      key: 'fx-impact',
+      frames: this.anims.generateFrameNumbers('gk_fx', { frames: [3, 4, 5] }),
+      frameRate: 18,
+    });
     this.makeVignette();
     if (!this.registry.get('stats')) this.registry.set('stats', { ...START_STATS });
     this.scene.start('village');
@@ -48,7 +159,8 @@ export class PreloadScene extends Phaser.Scene {
 
   /** Radial darkness overlay used by maps with the `dark` property. */
   private makeVignette() {
-    const w = 480, h = 270;
+    const w = 480,
+      h = 270;
     const tex = this.textures.createCanvas('vignette', w, h)!;
     const ctx = tex.getContext();
     const g = ctx.createRadialGradient(w / 2, h / 2, 40, w / 2, h / 2, w * 0.62);

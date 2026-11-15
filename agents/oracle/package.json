@@ -1,0 +1,22 @@
+{
+  "name": "islandwarrior-oracle",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "^22.23.2 || ^24.0.0 || ^26.0.0"
+  },
+  "scripts": {
+    "start": "node --env-file=.env.local agent.mjs start",
+    "check": "node --check agent.mjs && node --check greet.mjs && node --check chert-rooms.mjs",
+    "help": "node --env-file-if-exists=.env.local agent.mjs --help",
+    "test": "node --test greet.test.mjs",
+    "prestart": "node --env-file=.env.local check-env.mjs",
+    "check:env": "node --env-file=.env.local check-env.mjs"
+  },
+  "dependencies": {
+    "@livekit/agents": "^1.10.0",
+    "@livekit/agents-plugin-openai": "^1.10.0",
+    "@livekit/rtc-node": "^1.2.2"
+  }
+}

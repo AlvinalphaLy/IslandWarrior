@@ -13,9 +13,15 @@ await page.setViewport({ width: 960, height: 540 });
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 await page.goto(URL, { waitUntil: 'networkidle0' });
-await page.waitForFunction(() => window.game?.scene?.getScene('village')?.player, { timeout: 20000 });
+await page.waitForFunction(() => window.game?.scene?.getScene('village')?.player, {
+  timeout: 20000,
+});
 
-for (const [enemy, move] of [['polyphemus', 'Hurl Boulder'], ['siren', 'Bewitching Song'], ['shade', 'Spectral Spear']]) {
+for (const [enemy, move] of [
+  ['polyphemus', 'Hurl Boulder'],
+  ['siren', 'Bewitching Song'],
+  ['shade', 'Spectral Spear'],
+]) {
   await page.evaluate((enemyId) => {
     const g = window.game;
     g.scene.pause('village');
@@ -30,11 +36,18 @@ for (const [enemy, move] of [['polyphemus', 'Hurl Boulder'], ['siren', 'Bewitchi
     b.pickMove = () => m;
   }, move);
   await page.keyboard.press('Digit1');
-  await sleep(330); await page.screenshot({ path: `${OUT}/battle_${enemy}_1_thrust.png` });
-  await sleep(1150); await page.screenshot({ path: `${OUT}/battle_${enemy}_2_windup.png` });
-  await sleep(enemy === 'polyphemus' ? 650 : 500); await page.screenshot({ path: `${OUT}/battle_${enemy}_3_attack.png` });
+  await sleep(330);
+  await page.screenshot({ path: `${OUT}/battle_${enemy}_1_thrust.png` });
+  await sleep(1150);
+  await page.screenshot({ path: `${OUT}/battle_${enemy}_2_windup.png` });
+  await sleep(enemy === 'polyphemus' ? 650 : 500);
+  await page.screenshot({ path: `${OUT}/battle_${enemy}_3_attack.png` });
   await sleep(1500);
-  await page.evaluate(() => { const g = window.game; g.scene.stop('battle'); document.getElementById('battle').style.display = 'none'; });
+  await page.evaluate(() => {
+    const g = window.game;
+    g.scene.stop('battle');
+    document.getElementById('battle').style.display = 'none';
+  });
   await sleep(200);
 }
 console.log('errors:', errors.length ? errors : 'none');

@@ -14,7 +14,8 @@ interface SheetLayout {
 /** LimeZu Modern Interiors (tools/import_characters.py): row 0 = run, row 1 = idle; 6 frames/dir, order right,up,left,down. */
 function limezu(): SheetLayout {
   const order: Dir[] = ['right', 'up', 'left', 'down'];
-  const walk = {} as Record<Dir, number[]>, idle = {} as Record<Dir, number[]>;
+  const walk = {} as Record<Dir, number[]>,
+    idle = {} as Record<Dir, number[]>;
   order.forEach((d, i) => {
     walk[d] = [0, 1, 2, 3, 4, 5].map((k) => i * 6 + k);
     idle[d] = [0, 1, 2, 3, 4, 5].map((k) => 24 + i * 6 + k);
@@ -25,7 +26,8 @@ function limezu(): SheetLayout {
 /** RPG Maker style (Fungus Cave pack): 3 cols x 4 rows, rows down,left,right,up; middle column = standing. */
 function rpgMaker(): SheetLayout {
   const order: Dir[] = ['down', 'left', 'right', 'up'];
-  const walk = {} as Record<Dir, number[]>, idle = {} as Record<Dir, number[]>;
+  const walk = {} as Record<Dir, number[]>,
+    idle = {} as Record<Dir, number[]>;
   order.forEach((d, r) => {
     walk[d] = [r * 3, r * 3 + 1, r * 3 + 2, r * 3 + 1];
     idle[d] = [r * 3 + 1];
@@ -38,31 +40,68 @@ const RPGM = rpgMaker();
 
 /** Every character sheet the game knows, with its layout. Preload loads exactly these. */
 export const CHARACTER_SHEETS: Record<string, SheetLayout> = {
-  adam: LIMEZU, alex: LIMEZU, amelia: LIMEZU, bob: LIMEZU, alex_alt: LIMEZU, amelia_alt: LIMEZU,
-  cleric: RPGM, fungus_ghost: RPGM, fungus_king: RPGM, fungus_red: RPGM, fungus_violet: RPGM,
-  refugee1: RPGM, refugee2: RPGM, refugee3: RPGM, refugee4: RPGM, sewer_ghost: RPGM, sewer_monster: RPGM,
+  adam: LIMEZU,
+  alex: LIMEZU,
+  amelia: LIMEZU,
+  bob: LIMEZU,
+  alex_alt: LIMEZU,
+  amelia_alt: LIMEZU,
+  cleric: RPGM,
+  fungus_ghost: RPGM,
+  fungus_king: RPGM,
+  fungus_red: RPGM,
+  fungus_violet: RPGM,
+  refugee1: RPGM,
+  refugee2: RPGM,
+  refugee3: RPGM,
+  refugee4: RPGM,
+  sewer_ghost: RPGM,
+  sewer_monster: RPGM,
   // Greek god skins (tools/greek_skins.py), same layout as the LimeZu sheets they are painted over
-  zeus: LIMEZU, hermes: LIMEZU, hades: LIMEZU, heracles: LIMEZU, aphrodite: LIMEZU,
+  zeus: LIMEZU,
+  hermes: LIMEZU,
+  hades: LIMEZU,
+  heracles: LIMEZU,
+  aphrodite: LIMEZU,
+  // the player's default look: Odysseus in his battle gear (tools/greek_skins.py)
+  odysseus: LIMEZU,
+  // FaZe Odysseus: the hero in FaZe Clan's black, white and red (tools/greek_skins.py), won in Circe's grotto
+  faze: LIMEZU,
 };
 
-/** Skins the player can cycle through with C, in order. */
-export const PLAYER_SKINS: { key: string; name: string }[] = [
+/**
+ * Skins the player can cycle through with C, in order. The first is the default. `unlock`: a challenge (scene key)
+ * that must be won first (registry `challengesWon`); until then C skips the skin.
+ */
+export const PLAYER_SKINS: { key: string; name: string; unlock?: string }[] = [
+  { key: 'odysseus', name: 'Odysseus' },
   { key: 'adam', name: 'Adam' },
   { key: 'zeus', name: 'Zeus' },
   { key: 'hermes', name: 'Hermes' },
   { key: 'hades', name: 'Hades' },
   { key: 'heracles', name: 'Heracles' },
   { key: 'aphrodite', name: 'Aphrodite' },
+  { key: 'faze', name: 'FaZe Odysseus', unlock: 'circe' },
 ];
 
 export function createCharacterAnims(scene: Phaser.Scene, key: string) {
   const layout = CHARACTER_SHEETS[key] ?? LIMEZU;
   (Object.keys(layout.walk) as Dir[]).forEach((d) => {
     if (!scene.anims.exists(`${key}-walk-${d}`)) {
-      scene.anims.create({ key: `${key}-walk-${d}`, frames: scene.anims.generateFrameNumbers(key, { frames: layout.walk[d] }), frameRate: layout.walkRate, repeat: -1 });
+      scene.anims.create({
+        key: `${key}-walk-${d}`,
+        frames: scene.anims.generateFrameNumbers(key, { frames: layout.walk[d] }),
+        frameRate: layout.walkRate,
+        repeat: -1,
+      });
     }
     if (!scene.anims.exists(`${key}-idle-${d}`)) {
-      scene.anims.create({ key: `${key}-idle-${d}`, frames: scene.anims.generateFrameNumbers(key, { frames: layout.idle[d] }), frameRate: layout.idleRate, repeat: -1 });
+      scene.anims.create({
+        key: `${key}-idle-${d}`,
+        frames: scene.anims.generateFrameNumbers(key, { frames: layout.idle[d] }),
+        frameRate: layout.idleRate,
+        repeat: -1,
+      });
     }
   });
 }
@@ -104,7 +143,8 @@ export class Character extends Phaser.Physics.Arcade.Sprite {
   }
 
   faceTowards(x: number, y: number) {
-    const dx = x - this.x, dy = y - this.y;
+    const dx = x - this.x,
+      dy = y - this.y;
     this.face(Math.abs(dx) > Math.abs(dy) ? (dx < 0 ? 'left' : 'right') : dy < 0 ? 'up' : 'down');
   }
 

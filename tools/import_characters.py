@@ -7,21 +7,22 @@ Output: public/assets/sprites/<key>.png  - 16x32 frames, row 0 = run (24), row 1
 Free-version license: non-commercial use only (see vendor/.../LICENSE.txt).
 Recolored variants (hue-shifted clothes/hair) are used so NPCs sharing a base sprite look different.
 """
+
 import colorsys, os
 import numpy as np
 from PIL import Image
 
-SRC = 'vendor/modern_interiors_free/Modern tiles_Free/Characters_free/'
-OUT = 'public/assets/sprites'
+SRC = "vendor/modern_interiors_free/Modern tiles_Free/Characters_free/"
+OUT = "public/assets/sprites"
 
 # key: (base character, hue shift in degrees or 0)
 CHARACTERS = {
-    'adam': ('Adam', 0),
-    'alex': ('Alex', 0),
-    'amelia': ('Amelia', 0),
-    'bob': ('Bob', 0),
-    'alex_alt': ('Alex', 150),
-    'amelia_alt': ('Amelia', -110),
+    "adam": ("Adam", 0),
+    "alex": ("Alex", 0),
+    "amelia": ("Amelia", 0),
+    "bob": ("Bob", 0),
+    "alex_alt": ("Alex", 150),
+    "amelia_alt": ("Amelia", -110),
 }
 
 
@@ -44,34 +45,44 @@ def hue_shift(img, deg):
 
 
 def build(key, base, shift):
-    run = Image.open(f'{SRC}{base}_run_16x16.png').convert('RGBA')
-    idle = Image.open(f'{SRC}{base}_idle_anim_16x16.png').convert('RGBA')
-    sheet = Image.new('RGBA', (384, 64), (0, 0, 0, 0))
+    run = Image.open(f"{SRC}{base}_run_16x16.png").convert("RGBA")
+    idle = Image.open(f"{SRC}{base}_idle_anim_16x16.png").convert("RGBA")
+    sheet = Image.new("RGBA", (384, 64), (0, 0, 0, 0))
     sheet.paste(run, (0, 0))
     sheet.paste(idle, (0, 32))
     if shift:
         sheet = hue_shift(sheet, shift)
-    sheet.save(f'{OUT}/{key}.png')
+    sheet.save(f"{OUT}/{key}.png")
     return sheet
 
 
 # Fungus Cave pack: RPG Maker layout (3 cols x 4 rows of 16x32; rows down/left/right/up), copied as-is
-CAVE_SRC = 'Fungus Cave [16x16]/Characters/'
+CAVE_SRC = "Fungus Cave [16x16]/Characters/"
 CAVE_CHARACTERS = {
-    'cleric': 'Cleric', 'fungus_ghost': 'Fungus - Ghost', 'fungus_king': 'Fungus - King', 'fungus_red': 'Fungus - red',
-    'fungus_violet': 'Fungus - violet', 'refugee1': 'Refugee 1', 'refugee2': 'Refugee 2', 'refugee3': 'Refugee 3',
-    'refugee4': 'Refugee 4', 'sewer_ghost': 'Sewers monster - ghost', 'sewer_monster': 'Sewers monster',
+    "cleric": "Cleric",
+    "fungus_ghost": "Fungus - Ghost",
+    "fungus_king": "Fungus - King",
+    "fungus_red": "Fungus - red",
+    "fungus_violet": "Fungus - violet",
+    "refugee1": "Refugee 1",
+    "refugee2": "Refugee 2",
+    "refugee3": "Refugee 3",
+    "refugee4": "Refugee 4",
+    "sewer_ghost": "Sewers monster - ghost",
+    "sewer_monster": "Sewers monster",
 }
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
     for key, name in CAVE_CHARACTERS.items():
-        Image.open(f'{CAVE_SRC}{name}.png').convert('RGBA').save(f'{OUT}/{key}.png')
+        Image.open(f"{CAVE_SRC}{name}.png").convert("RGBA").save(f"{OUT}/{key}.png")
     sheets = [build(k, b, s) for k, (b, s) in CHARACTERS.items()]
     # preview: idle-down frame of each
-    prev = Image.new('RGBA', (20 * len(sheets), 36), (120, 180, 90, 255))
+    prev = Image.new("RGBA", (20 * len(sheets), 36), (120, 180, 90, 255))
     for i, s in enumerate(sheets):
         prev.alpha_composite(s.crop((18 * 16, 32, 19 * 16, 64)), (i * 20 + 2, 2))
-    prev.resize((prev.width * 6, prev.height * 6), Image.NEAREST).save('cache/characters_preview.png')
-    print('ok', list(CHARACTERS))
+    prev.resize((prev.width * 6, prev.height * 6), Image.NEAREST).save(
+        "cache/characters_preview.png"
+    )
+    print("ok", list(CHARACTERS))
