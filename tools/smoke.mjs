@@ -49,7 +49,7 @@ console.log('dialog closed:', await page.evaluate(() => document.getElementById(
 // door -> cave: stand under the left red house door and walk up
 const active = () => page.evaluate(() => window.game.scene.getScenes(true).map((x) => x.scene.key).join(','));
 const doorId = await page.evaluate(() => {
-  const s = window.game.scene.getScene('village'); const d = s.portals.find((d) => d.tile.x < 100 && d.tile.y > 150) || s.portals[0];
+  const s = window.game.scene.getScene('village'); const d = s.portals.find((p) => p.id === 'house_5'); // green fenced house -> Fungus Cave
   s.player.setPosition(d.rect.centerX, d.rect.bottom + 8); s.player.face('up'); return d.id;
 });
 await page.keyboard.down('KeyW'); await new Promise((r) => setTimeout(r, 1600)); await page.keyboard.up('KeyW');
@@ -85,6 +85,43 @@ const back = await page.evaluate(() => {
 });
 console.log('ladder exit:', back, back.scenes === 'village' && back.from === doorId && back.dist < 20 ? 'OK' : 'FAIL');
 await page.screenshot({ path: 'cache/shot_back.png' });
+// ship of Odysseus: stand on the beach shore facing the water and talk to it
+await page.evaluate(() => {
+  const s = window.game.scene.getScene('village');
+  s.player.setPosition(406, 268); s.player.face('down');
+});
+await new Promise((r) => setTimeout(r, 300));
+await page.screenshot({ path: 'cache/shot_ship.png' });
+await page.keyboard.press('KeyE'); await new Promise((r) => setTimeout(r, 300));
+const shipDlg = await page.evaluate(() => document.querySelector('#dialog .name').textContent + ' ' + document.getElementById('dialog').style.display);
+console.log('ship dialog:', shipDlg, shipDlg.includes('black ship block') ? 'OK' : 'FAIL');
+await tap('KeyE'); // second line of the locked message names the unlock
+const shipLocked = await page.evaluate(() => document.querySelector('#dialog .text').textContent);
+console.log('ship locked before Achilles:', shipLocked.includes('Achilles') ? 'OK' : 'FAIL', '-', shipLocked);
+await tap('KeyE');
+// unlock + point the ship at an existing scene (the dragon lair isn't built yet) and sail
+await page.evaluate(() => {
+  const s = window.game.scene.getScene('village');
+  window.game.registry.set('unlocks', ['achilles']);
+  s.interactables.find((i) => i.kind === 'ship').target = 'cave';
+  s.player.setPosition(406, 268); s.player.face('down');
+});
+await new Promise((r) => setTimeout(r, 200));
+await tap('KeyE'); await tap('KeyE');
+await new Promise((r) => setTimeout(r, 1500));
+const sailed = await active();
+console.log('sail (cave as stand-in lair):', sailed, sailed === 'cave' ? 'OK' : 'FAIL');
+await page.evaluate(() => {
+  const s = window.game.scene.getScene('cave'); const e = s.portals.find((p) => p.kind === 'exit');
+  s.player.setPosition(e.rect.centerX, e.rect.bottom + 10); s.player.face('up');
+});
+await new Promise((r) => setTimeout(r, 200));
+await page.keyboard.down('KeyW'); await new Promise((r) => setTimeout(r, 1500)); await page.keyboard.up('KeyW');
+await new Promise((r) => setTimeout(r, 500));
+const landed = await page.evaluate(() => { const s = window.game.scene.getScene('village');
+  return { scene: window.game.scene.getScenes(true).map((x) => x.scene.key).join(','), x: Math.round(s.player.x), y: Math.round(s.player.y) }; });
+console.log('sail back lands on the shore:', JSON.stringify(landed), landed.scene === 'village' && Math.abs(landed.x - 406) < 6 && Math.abs(landed.y - 268) < 6 ? 'OK' : 'FAIL');
+await page.evaluate(() => window.game.registry.set('unlocks', []));
 // locked door: house_1 (top-left blue house) has no target
 await page.evaluate(() => {
   const s = window.game.scene.getScene('village'); const d = s.portals.find((p) => p.id === 'house_1');
@@ -95,16 +132,16 @@ await new Promise((r) => setTimeout(r, 200));
 await page.keyboard.down('KeyW'); await new Promise((r) => setTimeout(r, 600)); await page.keyboard.up('KeyW');
 const locked = await page.evaluate(() => [document.getElementById('toast').innerText, window.game.scene.getScenes(true).map((x) => x.scene.key).join(',')]);
 console.log('locked door:', locked, locked[0].includes('locked') && locked[1] === 'village' ? 'OK' : 'FAIL');
-// dungeon: house_5
+// dungeon: house_0 (red house, left) -> Telemachus training room
 await page.evaluate(() => {
-  const s = window.game.scene.getScene('village'); const d = s.portals.find((p) => p.id === 'house_5');
+  const s = window.game.scene.getScene('village'); const d = s.portals.find((p) => p.id === 'house_0');
   s.player.setPosition(d.rect.centerX, d.rect.bottom + 8); s.player.face('up');
 });
 await new Promise((r) => setTimeout(r, 200));
 await page.keyboard.down('KeyW'); await new Promise((r) => setTimeout(r, 1600)); await page.keyboard.up('KeyW');
 await new Promise((r) => setTimeout(r, 500));
 const inDungeon = await active();
-console.log('enter house_5: active scene =', inDungeon, inDungeon === 'dungeon' ? 'OK' : 'FAIL');
+console.log('enter house_0: active scene =', inDungeon, inDungeon === 'dungeon' ? 'OK' : 'FAIL');
 await page.screenshot({ path: 'cache/shot_dungeon.png' });
 await page.keyboard.press('KeyM'); await new Promise((r) => setTimeout(r, 300));
 await page.screenshot({ path: 'cache/shot_dungeon_overview.png' });

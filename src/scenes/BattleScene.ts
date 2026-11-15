@@ -13,8 +13,10 @@ export interface BattleData {
 export type BattleResult = 'win' | 'run' | 'lose';
 
 const COMMANDS: BattleCommand[] = ['attack', 'defend', 'potion', 'run'];
-const HERO_HOME = { x: 78, y: 252 };
-const FOE_HOME = { x: 290, y: 190 };
+// everything stands in the top ~2/3 of the screen: the HTML command panel covers the bottom
+const HERO_HOME = { x: 72, y: 186 };
+const FOE_HOME = { x: 290, y: 158 };
+const HERO_SCALE = 2.2;
 
 /**
  * Turn-based battle in Polyphemus' cave: Odysseus (seen from behind) against one enemy.
@@ -53,8 +55,8 @@ export class BattleScene extends Phaser.Scene {
 
     // foe on the sunlit sand circle
     this.foeAnimated = this.def.sprite in GREEK_SHEETS;
-    const fh = this.foeAnimated ? GREEK_SHEETS[this.def.sprite].h : 0;
-    const foeScale = !this.foeAnimated ? 2 : fh > 32 ? 2.5 : 3;
+    const fh = this.foeAnimated ? GREEK_SHEETS[this.def.sprite].h : this.textures.get(this.def.sprite).getSourceImage().height;
+    const foeScale = this.foeAnimated ? (fh > 32 ? 2.2 : 2.5) : Math.min(2, 130 / fh);
     this.add.ellipse(FOE_HOME.x, FOE_HOME.y - 2, 26 * foeScale, 5 * foeScale, 0x000000, 0.3);
     this.foe = this.add.sprite(FOE_HOME.x, FOE_HOME.y, this.def.sprite, this.foeAnimated ? 0 : undefined).setOrigin(0.5, 1).setScale(foeScale);
     this.foeIdle();
@@ -62,8 +64,8 @@ export class BattleScene extends Phaser.Scene {
     if (this.def.sprite.includes('shade')) this.tweens.add({ targets: this.foe, y: FOE_HOME.y - 4, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
 
     // Odysseus, seen from behind, bottom-left
-    this.add.ellipse(HERO_HOME.x, HERO_HOME.y - 3, 70, 12, 0x000000, 0.3);
-    this.hero = this.add.sprite(HERO_HOME.x, HERO_HOME.y, 'gk_odysseus', 0).setOrigin(0.5, 1).setScale(2.5).setDepth(5);
+    this.add.ellipse(HERO_HOME.x, HERO_HOME.y - 3, 60, 10, 0x000000, 0.3);
+    this.hero = this.add.sprite(HERO_HOME.x, HERO_HOME.y, 'gk_odysseus', 0).setOrigin(0.5, 1).setScale(HERO_SCALE).setDepth(5);
     this.hero.play('gk_odysseus-idle');
 
     this.cameras.main.fadeIn(250, 0, 0, 0);
@@ -125,8 +127,8 @@ export class BattleScene extends Phaser.Scene {
       this.defending = true;
       this.hero.anims.stop();
       this.hero.setFrame(HERO_FRAME.guard);
-      this.burst(this.hero.x - 4, this.hero.y - 55, 'px_gold', 10, 60);
-      this.fxSprite(this.hero.x - 4, this.hero.y - 55, FX_FRAME.spark, 1.2);
+      this.burst(this.hero.x - 4, this.hero.y - 48, 'px_gold', 10, 60);
+      this.fxSprite(this.hero.x - 4, this.hero.y - 48, FX_FRAME.spark, 1.2);
       this.say('You raise your bronze shield.');
       await this.wait(500);
     } else if (c === 'potion') {
@@ -136,7 +138,7 @@ export class BattleScene extends Phaser.Scene {
       this.hero.anims.stop();
       this.hero.setFrame(HERO_FRAME.victory);
       this.ambrosia();
-      this.floatText(this.hero.x, this.hero.y - 105, `+${heal}`, '#B8F28A');
+      this.floatText(this.hero.x, this.hero.y - 92, `+${heal}`, '#B8F28A');
       this.say(`You taste ambrosia, food of the gods, and recover ${heal} HP.`);
       this.refresh();
       await this.wait(800);
@@ -165,7 +167,7 @@ export class BattleScene extends Phaser.Scene {
     if (crit) {
       // Athena's owl appears and the screen glows gold
       this.say('Grey-eyed Athena guides your spear!');
-      const owl = this.fxSprite(h.x + 30, h.y - 120, FX_FRAME.owl, 2.5, false).setAlpha(0);
+      const owl = this.fxSprite(h.x + 30, h.y - 104, FX_FRAME.owl, 2.5, false).setAlpha(0);
       this.tweens.add({ targets: owl, alpha: 1, y: owl.y - 10, duration: 300, yoyo: true, hold: 300, onComplete: () => owl.destroy() });
       this.cameras.main.flash(250, 246, 211, 107);
       await this.wait(600);
@@ -175,7 +177,7 @@ export class BattleScene extends Phaser.Scene {
     await this.tween({ targets: h, x: HERO_HOME.x - 6, y: HERO_HOME.y + 3, duration: 160, ease: 'Quad.out' });
     // dash in (with after-images) and thrust: the spear tip lands on the foe's chest
     h.setFrame(HERO_FRAME.thrust);
-    const target = { x: this.foe.x - 50, y: this.foe.y + 40 };
+    const target = { x: this.foe.x - 46, y: this.foe.y + 26 };
     await this.tween({
       targets: h, x: target.x, y: target.y, duration: 130, ease: 'Quad.in',
       onUpdate: () => this.afterImage(h),
@@ -184,7 +186,7 @@ export class BattleScene extends Phaser.Scene {
     this.foeHp = Math.max(0, this.foeHp - dmg);
     this.hitFoe(dmg, crit);
     this.refresh();
-    this.say(`${crit ? 'A godlike thrust! ' : ''}Your spear strikes the ${this.def.name} for ${dmg}.`);
+    this.say(`${crit ? 'A godlike thrust! ' : ''}Your spear strikes ${this.def.boss ? '' : 'the '}${this.def.name} for ${dmg}.`);
     await this.wait(crit ? 140 : 80);
     // hop back home
     h.setFrame(HERO_FRAME.windup);
@@ -254,10 +256,10 @@ export class BattleScene extends Phaser.Scene {
     await this.tween({ targets: f, y: f.y - 6, duration: 220, ease: 'Quad.out' });
     this.foeFrame('strike');
     await this.tween({
-      targets: f, x: FOE_HOME.x - 120, y: FOE_HOME.y + 30, duration: 140, ease: 'Quad.in',
+      targets: f, x: FOE_HOME.x - 130, y: FOE_HOME.y + 12, duration: 140, ease: 'Quad.in',
       onUpdate: () => this.afterImage(f),
     });
-    this.playFx(this.hero.x + 4, this.hero.y - 55, 'fx-slash', 2.5, true);
+    this.playFx(this.hero.x + 4, this.hero.y - 48, 'fx-slash', 2.5, true);
     this.tweens.add({ targets: f, x: FOE_HOME.x, y: FOE_HOME.y, duration: 320, delay: 120, ease: 'Quad.out' });
   }
 
@@ -270,7 +272,7 @@ export class BattleScene extends Phaser.Scene {
     this.tweens.add({ targets: rock, y: sy - 6, duration: 350, yoyo: true, repeat: 0 });
     await this.wait(500);
     this.foeFrame('strike');
-    const tx = this.hero.x + 6, ty = this.hero.y - 50;
+    const tx = this.hero.x + 6, ty = this.hero.y - 44;
     await this.tween({
       targets: rock, x: tx, duration: 420, ease: 'Linear', angle: -360,
       onUpdate: (tw: Phaser.Tweens.Tween) => {
@@ -291,7 +293,7 @@ export class BattleScene extends Phaser.Scene {
     await this.wait(250);
     this.foeFrame('strike');
     const sx = f.x, sy = f.y - f.displayHeight * 0.8;
-    const tx = this.hero.x, ty = this.hero.y - 60;
+    const tx = this.hero.x, ty = this.hero.y - 52;
     for (let i = 0; i < 5; i++) {
       const n = this.fxSprite(sx, sy, FX_FRAME.note, 1.2, false).setDepth(20).setAlpha(0.95);
       const ph = i * 1.3;
@@ -315,8 +317,8 @@ export class BattleScene extends Phaser.Scene {
     h.setFrame(this.defending ? HERO_FRAME.guard : HERO_FRAME.hurt);
     if (this.defending) {
       // the shield rings: sparks instead of blood
-      this.fxSprite(h.x - 4, h.y - 55, FX_FRAME.spark, 2);
-      this.burst(h.x - 4, h.y - 55, 'px_gold', 14, 130);
+      this.fxSprite(h.x - 4, h.y - 48, FX_FRAME.spark, 2);
+      this.burst(h.x - 4, h.y - 48, 'px_gold', 14, 130);
     } else {
       h.setTintFill(0xff4040);
       this.time.delayedCall(110, () => h.clearTint());
@@ -324,7 +326,7 @@ export class BattleScene extends Phaser.Scene {
     this.tweens.add({ targets: h, x: HERO_HOME.x - (heavy ? 18 : 10), duration: 70, yoyo: true, onComplete: () => h.setX(HERO_HOME.x) });
     this.cameras.main.shake(heavy ? 320 : 180, heavy ? 0.02 : 0.01);
     if (!this.defending) this.cameras.main.flash(110, 140, 20, 20);
-    this.floatText(h.x + 10, h.y - 110, `-${dmg}`, '#FF6B6B', heavy ? 20 : 16);
+    this.floatText(h.x + 10, h.y - 96, `-${dmg}`, '#FF6B6B', heavy ? 20 : 16);
   }
 
   private foeHeal() {

@@ -13,7 +13,8 @@ npm run dev        # http://localhost:5173
 |---|---|
 | WASD / Arrows | Move |
 | E / Space / Enter | Talk to an NPC, read a sign, advance dialog |
-| Walk up into a house door | Red house (left, where you start) → **Fungus Cave**. Green fenced house (bottom-right) → **Sewer Dungeon**. The other four houses are locked. |
+| Walk up into a house door | Red house (left, where you start) → **Telemachus training room** (sewer dungeon). Green fenced house (bottom-right) → **Fungus Cave**. The other four are locked until their dungeons exist. |
+| Talk to the black ship (stand on the beach shore, press E) | The dragon raid entry. It sails to the `lair` scene once `achilles` is in the registry's `unlocks`; until then the crew tells you to beat Achilles. |
 | Walk up into a ladder | Climbs back out through the door you came in by |
 | Touch a monster (dungeon) | Starts a battle. **1–4** or the arrow keys + Enter choose Attack / Defend / Potion / Run. |
 | C | Change the player's skin: Adam → Zeus → Hermes → Hades → Heracles → Aphrodite |

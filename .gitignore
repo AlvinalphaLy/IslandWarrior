@@ -13,3 +13,6 @@ cache
 .DS_Store
 Thumbs.db
 *.log
+
+# generated team docs (PDFs)
+docs/

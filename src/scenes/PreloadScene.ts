@@ -25,11 +25,14 @@ export class PreloadScene extends Phaser.Scene {
       this.load.spritesheet(k, `assets/greek/${k.slice(3)}.png`, { frameWidth: f.w, frameHeight: f.h });
     }
     this.load.image('cave_bg', 'assets/greek/cave_bg.png');
+    // ship of Odysseus (tools/make_ship.py): 4 frames of 128x84, waterline at y=66
+    this.load.spritesheet('ship', 'assets/props/ship.png', { frameWidth: 128, frameHeight: 84 });
   }
 
   create() {
     this.anims.create({ key: 'campfire', frames: this.anims.generateFrameNumbers('campfire_ss', {}), frameRate: 9, repeat: -1 });
     this.anims.create({ key: 'door-open', frames: this.anims.generateFrameNumbers('door_ss', { start: 0, end: 3 }), frameRate: 12 });
+    this.anims.create({ key: 'ship-idle', frames: this.anims.generateFrameNumbers('ship', { start: 0, end: 3 }), frameRate: 4, repeat: -1 });
     // idle loop for every animated Greek enemy (frames 0-1), used on the map and in battle
     for (const k of Object.keys(GREEK_SHEETS)) {
       if (k === 'gk_fx' || k === 'gk_odysseus') continue;

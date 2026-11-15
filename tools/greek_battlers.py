@@ -477,20 +477,22 @@ def backdrop():
     im = Image.new('RGBA', (W, H), C('2a2026'))
     d = ImageDraw.Draw(im)
     # view through the cave mouth: sunset sky, sun, Aegean sea, island
+    # horizon at y=HZ, cave floor from y=FL (kept high: the HTML command panel covers the bottom of the screen)
+    HZ, FL = 38, 56
     sky = [C('3b2a5c'), C('6a3a6e'), C('a64a62'), C('e0704e'), C('f6a14a'), C('fcd27a')]
     for i, c in enumerate(sky):
-        d.rectangle([0, i * 9, W, i * 9 + 9], fill=c)
-    d.ellipse([132, 40, 158, 66], fill=C('fff0b0'))
+        d.rectangle([0, i * 7, W, i * 7 + 7], fill=c)
+    d.ellipse([133, HZ - 13, 157, HZ + 11], fill=C('fff0b0'))
     sea = [C('2c5a8a'), C('22476e'), C('1b3656'), C('152a44')]
     for i, c in enumerate(sea):
-        d.rectangle([0, 54 + i * 6, W, 60 + i * 6], fill=c)
-    for i in range(40):
-        y = 56 + rnd.randrange(22); x = rnd.randrange(60, 200)
+        d.rectangle([0, HZ + i * 5, W, HZ + 5 + i * 5], fill=c)
+    for i in range(34):
+        y = HZ + 2 + rnd.randrange(FL - HZ - 2); x = rnd.randrange(60, 200)
         d.line([x, y, x + rnd.randrange(2, 7), y], fill=C('5d8fc0'))
-    for k in range(6):  # sun glitter
-        d.line([140 + rnd.randrange(-4, 4), 56 + k * 3, 150 + rnd.randrange(-4, 4), 56 + k * 3], fill=C('fcd27a'))
-    d.polygon([(64, 54), (78, 44), (90, 47), (104, 54)], fill=C('3a2a4a'))  # distant island
-    d.polygon([(178, 54), (188, 49), (199, 54)], fill=C('3a2a4a'))
+    for k in range(5):  # sun glitter
+        d.line([140 + rnd.randrange(-4, 4), HZ + 2 + k * 3, 150 + rnd.randrange(-4, 4), HZ + 2 + k * 3], fill=C('fcd27a'))
+    d.polygon([(64, HZ), (78, HZ - 9), (90, HZ - 7), (104, HZ)], fill=C('3a2a4a'))  # distant islands
+    d.polygon([(178, HZ), (188, HZ - 5), (199, HZ)], fill=C('3a2a4a'))
     # cave rock: everything outside an irregular mouth
     rock = Image.new('L', (W, H), 255)
     rd = ImageDraw.Draw(rock)
@@ -498,8 +500,8 @@ def backdrop():
     for k in range(40):
         a = math.pi + math.pi * k / 39
         rx, ry = 78 + rnd.randrange(-4, 4), 52 + rnd.randrange(-4, 4)
-        mouth.append((122 + math.cos(a) * rx, 74 + math.sin(a) * ry))
-    mouth += [(200, 74), (44, 74)]
+        mouth.append((122 + math.cos(a) * rx * 1.05, FL + math.sin(a) * ry * 0.8))
+    mouth += [(204, FL), (40, FL)]
     rd.polygon(mouth, fill=0)
     m = np.array(rock) > 0
     a = np.array(im)
@@ -520,21 +522,23 @@ def backdrop():
         h = rnd.randrange(8, 20)
         d.polygon([(x - 4, 0), (x + 4, 0), (x + rnd.randrange(-1, 2), h)], fill=C('3a2c30'))
     # cave floor (sand and stone) in front of the opening
-    d.rectangle([0, 74, W, H], fill=C('6b5446'))
-    for i in range(6):
-        d.rectangle([0, 74 + i * 10, W, 84 + i * 10], fill=[C('7a604e'), C('735a49'), C('6b5446'), C('624c40'), C('594539'), C('4f3d33')][i])
-    for _ in range(140):
-        x, y = rnd.randrange(W), rnd.randrange(76, H)
+    d.rectangle([0, FL, W, H], fill=C('6b5446'))
+    floor = [C('7a604e'), C('735a49'), C('6b5446'), C('624c40'), C('594539'), C('4f3d33'), C('47362d'), C('3f3028')]
+    for i, c in enumerate(floor):
+        d.rectangle([0, FL + i * 10, W, FL + 10 + i * 10], fill=c)
+    for _ in range(160):
+        x, y = rnd.randrange(W), rnd.randrange(FL + 2, H)
         d.point([x, y], fill=C('8d7360') if rnd.random() < 0.6 else C('4a382e'))
     # battle circles (foe and hero stand here)
-    d.ellipse([110, 88, 180, 102], fill=C('836a56')); d.ellipse([116, 90, 174, 100], fill=C('8f7562'))
+    d.ellipse([110, 72, 180, 86], fill=C('836a56')); d.ellipse([116, 74, 174, 84], fill=C('8f7562'))
+    d.ellipse([10, 82, 62, 96], fill=C('735a49'))
     # Polyphemus' sheep on the left, wine amphoras and a cheese rack on the right
-    for sx, sy in [(14, 78), (34, 82), (22, 90)]:
+    for sx, sy in [(62, 57), (80, 60), (70, 65)]:
         d.ellipse([sx, sy, sx + 14, sy + 9], fill=C('e6dfd0')); d.ellipse([sx + 1, sy + 1, sx + 9, sy + 5], fill=C('fbf7ee'))
         d.ellipse([sx - 4, sy + 1, sx + 2, sy + 6], fill=C('3a2c2a'))
         for lx in (sx + 2, sx + 10):
             d.rectangle([lx, sy + 9, lx + 1, sy + 12], fill=C('3a2c2a'))
-    for ax, ay in [(206, 72), (222, 78)]:
+    for ax, ay in [(206, 54), (222, 60)]:
         d.ellipse([ax, ay + 4, ax + 12, ay + 20], fill=C('b0583a')); d.rectangle([ax + 4, ay, ax + 8, ay + 5], fill=C('b0583a'))
         d.rectangle([ax + 2, ay + 1, ax + 3, ay + 7], fill=C('8a4028')); d.rectangle([ax + 9, ay + 1, ax + 10, ay + 7], fill=C('8a4028'))
         d.rectangle([ax + 1, ay + 10, ax + 11, ay + 11], fill=C('2a1a14'))  # black-figure band

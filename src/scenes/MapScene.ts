@@ -25,7 +25,12 @@ interface TiledMap { tilesets: TiledTileset[]; layers: TiledLayer[]; tilewidth: 
 const prop = <T>(o: { properties?: TiledProp[] }, key: string, def: T): T =>
   (o.properties?.find((p) => p.name === key)?.value as T) ?? def;
 
-interface Interactable { kind: 'npc' | 'sign' | 'chest'; rect: Phaser.Geom.Rectangle; npc?: Npc; dialog: string; id: string }
+interface Interactable {
+  kind: 'npc' | 'sign' | 'chest' | 'ship';
+  rect: Phaser.Geom.Rectangle; npc?: Npc; dialog: string; id: string;
+  /** ship only: scene to sail to, and the unlock it needs (registry 'unlocks') */
+  target?: string; requires?: string;
+}
 /** A door (village houses) or exit (cave ladder): walking up into it moves to `target`. */
 interface Portal { id: string; kind: 'door' | 'exit'; target: string; rect: Phaser.Geom.Rectangle; tile: Phaser.Math.Vector2; busy: boolean }
 
@@ -51,9 +56,11 @@ export class MapScene extends Phaser.Scene {
   private overview = false;
   private leaving = false;
   private animatedTiles: { tiles: Phaser.Tilemaps.Tile[]; first: number; count: number }[] = [];
-  private dialog: { entry: DialogEntry; line: number; target?: Interactable } | null = null;
+  private dialog: { entry: DialogEntry; line: number; target?: Interactable; onClose?: () => void } | null = null;
   private arrival: MapSceneData = {};
   private enemies: Enemy[] = [];
+  /** ship name -> where the player lands when sailing back to this map */
+  private shipLandings: Record<string, Phaser.Math.Vector2> = {};
   private vignette: Phaser.GameObjects.Image | null = null;
   private inBattle = false;
   /** the player can't start another battle until this time (after running away) */
@@ -74,6 +81,7 @@ export class MapScene extends Phaser.Scene {
     this.overview = false;
     this.leaving = false;
     this.enemies = [];
+    this.shipLandings = {};
     this.vignette = null;
     this.inBattle = false;
     this.safeUntil = 0;
@@ -183,6 +191,21 @@ export class MapScene extends Phaser.Scene {
         const id = prop(s, 'enemy', '');
         const defeated = (this.registry.get('defeated') as string[] | undefined) ?? [];
         if (ENEMIES[id] && !defeated.includes(`${this.scene.key}:${s.name}`)) this.enemies.push(new Enemy(this, s.x, s.y, id, s.name));
+      } else if (s.type === 'ship') {
+        // a moored ship: (x, y) is the waterline centre; it bobs and can be talked to from the shore
+        const WATERLINE = 66;
+        const ship = this.add.sprite(s.x, s.y, 'ship', 0).setOrigin(0.5, WATERLINE / 84).setDepth(s.y);
+        ship.play('ship-idle');
+        this.tweens.add({ targets: ship, y: s.y + 1, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+        const r = prop(s, 'talkRect', '').split(',').map(Number);
+        if (r.length === 4) {
+          this.interactables.push({
+            kind: 'ship', rect: new Phaser.Geom.Rectangle(r[0], r[1], r[2], r[3]), dialog: prop(s, 'dialog', ''), id: s.name,
+            target: prop(s, 'target', ''), requires: prop(s, 'requires', ''),
+          });
+        }
+        const a = prop(s, 'arrive', '').split(',').map(Number);
+        if (a.length === 2) this.shipLandings[s.name] = new Phaser.Math.Vector2(a[0], a[1]);
       } else if (s.type === 'sign' || s.type === 'chest') {
         this.interactables.push({ kind: s.type, rect, dialog: prop(s, 'dialog', ''), id: s.name });
       } else if (s.type === 'door' || s.type === 'exit') {
@@ -200,6 +223,9 @@ export class MapScene extends Phaser.Scene {
     // a skin chosen with C carries over between maps
     const sprite = (this.registry.get('playerSkin') as string | undefined) ?? start?.sprite ?? 'adam';
     if (via) start = { x: via.rect.centerX, y: via.rect.bottom + 6, sprite, face: 'down' };
+    // sailing home: step off onto the shore, looking at the ship
+    const landing = this.arrival.from ? this.shipLandings[this.arrival.from] : undefined;
+    if (!via && landing) start = { x: landing.x, y: landing.y, sprite, face: 'down' };
     this.player = new Player(this, start!.x, start!.y, sprite);
     this.player.face(start!.face);
 
@@ -319,9 +345,29 @@ export class MapScene extends Phaser.Scene {
         }
       }
     }
-    this.dialog = { entry, line: 0, target: best };
+    let onClose: (() => void) | undefined;
+    if (best.kind === 'ship') {
+      const ship = best;
+      const unlocks = (this.registry.get('unlocks') as string[] | undefined) ?? [];
+      const unlocked = !ship.requires || unlocks.includes(ship.requires);
+      const ready = unlocked && !!ship.target && !!this.scene.get(ship.target);
+      entry = dialogFor(`${ship.dialog}_${ready ? 'sail' : unlocked ? 'soon' : 'locked'}`);
+      if (ready) onClose = () => this.sail(ship);
+    }
+    this.dialog = { entry, line: 0, target: best, onClose };
     this.player.frozen = true;
     this.renderDialog();
+  }
+
+  /** Board the ship and sail to its target scene; exits there bring the player back to this shore. */
+  private sail(ship: Interactable) {
+    this.leaving = true;
+    this.player.frozen = true;
+    this.registry.set('lastHouse', ship.id); // exits in the target map return "through" the ship
+    this.cameras.main.fadeOut(600, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      this.scene.start(ship.target!, { from: ship.id } as MapSceneData);
+    });
   }
 
   private advanceDialog() {
@@ -329,8 +375,12 @@ export class MapScene extends Phaser.Scene {
     this.dialog.line++;
     if (this.dialog.line >= this.dialog.entry.lines.length) {
       if (this.dialog.target?.npc) this.dialog.target.npc.talking = false;
+      const onClose = this.dialog.onClose;
       this.dialog = null;
       this.player.frozen = false;
+      this.renderDialog();
+      onClose?.();
+      return;
     }
     this.renderDialog();
   }

@@ -343,9 +343,10 @@ for x, y, w, h, k in rects:
 
 # ---------------------------------------------------------------- spawns
 # where each house door leads (scene key); houses not listed are locked
+# (team plan: red house left = Telemachus training room, the brown-brick sewer dungeon)
 DOOR_TARGETS = {
-    'house_0': 'cave',     # red house, left (player start) -> Fungus Cave
-    'house_5': 'dungeon',  # green fenced house, bottom-right -> Sewer dungeon (Fantasy Battlers)
+    'house_0': 'dungeon',  # red house, left (player start) -> Telemachus training room (sewer dungeon)
+    'house_5': 'cave',     # green fenced house, bottom-right -> Fungus Cave
 }
 def nearest_walkable(x, y, foot=(10, 6)):
     best = None
@@ -384,6 +385,17 @@ for name, sprite, x, y, dlg, wander in SPAWNS:
 for i, (dx, dy) in enumerate(sorted(doors)):
     spawn_objs.append(dict(id=next_id(), name=f'door_{i}', type='door', x=float(dx), y=float(dy), width=16, height=16,
                            rotation=0, visible=True, properties=[dict(name='house', type='string', value=f'house_{i}'), dict(name='target', type='string', value=DOOR_TARGETS.get(f'house_{i}', ''))]))
+# the ship of Odysseus (tools/make_ship.py) at anchor off the beach. Homeric ships were beached or anchored at the
+# shore, and the open water south of the beach is the only stretch wide enough for a galley seen side-on.
+# (x, y) = waterline centre; talkRect = the strip of shore you can speak to it from.
+spawn_objs.append(dict(id=next_id(), name='odysseus_ship', type='ship', x=406.0, y=322.0, point=True, width=0, height=0,
+                       rotation=0, visible=True,
+                       properties=[dict(name='dialog', type='string', value='ship'),
+                                   dict(name='talkRect', type='string', value='344,258,124,40'),
+                                   # the ship is the dragon raid entry: sails to `target` once `requires` is unlocked
+                                   dict(name='target', type='string', value='lair'),
+                                   dict(name='requires', type='string', value='achilles'),
+                                   dict(name='arrive', type='string', value='406,268')]))
 sign_i = 0
 for g, members in groups.items():
     if any(m['sheet'] == 'village' and m['id'] in SIGNS for m in members):

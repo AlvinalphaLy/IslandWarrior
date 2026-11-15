@@ -17,6 +17,11 @@ export const DIALOG: Record<string, DialogEntry> = {
   sign_4: { name: 'Sign', lines: ['Welcome to the island!'] },
   sign_5: { name: 'Sign', lines: ['Garden. Please keep off the flowers.'] },
 
+  // the ship of Odysseus = the dragon raid entry (see `requires` / `target` on the ship in build_map.py)
+  ship_locked: { name: 'The black ship', lines: ["Odysseus' black ship rides at anchor, oars shipped, sail half full of wind.", "The crew won't row for an untested captain. Defeat Achilles, then sail to the dragon's lair."] },
+  ship_soon: { name: 'The black ship', lines: ['The crew salutes you, champion.', "But the Oracle has not yet shown them the way to the dragon's lair. (The lair is not built yet.)"] },
+  ship_sail: { name: 'The black ship', lines: ["The crew takes up the oars. Across the wine-dark sea to the dragon's lair!"] },
+
   // ---- cave (under every house) ----
   fungus_king: { name: 'Fungus King', lines: ['So. A surface-dweller finds the way down through a cellar.', 'Every house on your island sits upon my kingdom. Tread softly, warrior.'] },
   fungus_red: { name: 'Rufus', lines: ['Spores! Spores everywhere! ...Sorry, that was me.'] },
