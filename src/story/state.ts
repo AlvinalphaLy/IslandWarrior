@@ -1,90 +1,112 @@
-export interface StoryEvent {
-  type: 'talk' | 'inspect' | 'victory';
-  key: string;
-  map: string;
+/** The playable first island is an Odyssey-inspired adaptation of Aeaea, Circe's island. */
+export type VoyageStage = 'harbor' | 'sailing' | 'landfall' | 'grotto' | 'returning' | 'complete';
+export type LandingReason = 'food' | 'treasure';
+export type VoyageEvent =
+  | { type: 'board' }
+  | { type: 'landfall'; island: 'aeaea' }
+  | { type: 'choose_reason'; reason: LandingReason }
+  | { type: 'enter_grotto' }
+  | { type: 'victory'; enemy: string }
+  | { type: 'recover_moly' };
+export interface VoyageProgress {
+  version: 1;
+  stage: VoyageStage;
+  reason: LandingReason;
+  defeated: string[];
+  hasMoly: boolean;
+  seen: string[];
 }
-export interface StoryChapter {
-  id: string;
-  title: string;
-  objective: string;
-  event: StoryEvent;
+export interface VoyageTransition {
+  progress: VoyageProgress;
+  beats: string[];
 }
-export interface StoryProgress {
-  started: boolean;
-  chapter: number;
-  completed: string[];
-}
-export const newStory = (): StoryProgress => ({ started: false, chapter: 0, completed: [] });
-/** Only the current objective can progress; unrelated exploration and duplicate events are harmless. */
-export function matchesChapter(
-  progress: StoryProgress,
-  chapter: StoryChapter | undefined,
-  event: StoryEvent,
-): boolean {
-  return (
-    progress.started &&
-    !!chapter &&
-    chapter.event.type === event.type &&
-    chapter.event.key === event.key &&
-    chapter.event.map === event.map
-  );
-}
-/** Record completion once, after its story card finishes; cancelling a popup never completes a chapter. */
-export function completeChapter(
-  progress: StoryProgress,
-  chapters: readonly StoryChapter[],
-): StoryProgress {
-  const chapter = chapters[progress.chapter];
-  if (!progress.started || !chapter) return progress;
-  return {
-    ...progress,
-    chapter: progress.chapter + 1,
-    completed: [...progress.completed, chapter.id],
+export const newVoyage = (): VoyageProgress => ({
+  version: 1,
+  stage: 'harbor',
+  reason: 'food',
+  defeated: [],
+  hasMoly: false,
+  seen: [],
+});
+
+/** Advance only from verified game events; replayed hooks never repeat a story beat or grant inventory. */
+export function advanceVoyage(current: VoyageProgress, event: VoyageEvent): VoyageTransition {
+  let progress = { ...current, defeated: [...current.defeated], seen: [...current.seen] };
+  const beats: string[] = [];
+  const emit = (key: string) => {
+    if (!progress.seen.includes(key)) {
+      progress.seen.push(key);
+      beats.push(key);
+    }
   };
+
+  switch (event.type) {
+    case 'board':
+      if (progress.stage === 'harbor') {
+        progress.stage = 'sailing';
+        emit('voyage_departure');
+      } else if (progress.stage === 'returning' && progress.hasMoly) {
+        progress.stage = 'complete';
+        emit('voyage_departure_aeaea');
+      }
+      break;
+    case 'landfall':
+      if (progress.stage === 'sailing') {
+        progress.stage = 'landfall';
+        emit('voyage_landfall');
+      }
+      break;
+    case 'choose_reason':
+      if (
+        progress.stage === 'landfall' &&
+        !progress.seen.some((key) => key === 'voyage_food' || key === 'voyage_treasure')
+      ) {
+        progress.reason = event.reason;
+        emit(`voyage_${event.reason}`);
+      }
+      break;
+    case 'enter_grotto':
+      if (progress.stage === 'sailing' || progress.stage === 'landfall') {
+        emit('voyage_landfall');
+        progress.stage = 'grotto';
+        emit(`voyage_${progress.reason}`);
+        emit('voyage_challenge');
+      }
+      break;
+    case 'victory':
+      if (progress.stage === 'grotto' && !progress.defeated.includes(event.enemy)) {
+        progress.defeated.push(event.enemy);
+        emit('voyage_first_victory');
+      }
+      break;
+    case 'recover_moly':
+      if (progress.stage === 'grotto') {
+        progress.hasMoly = true;
+        progress.stage = 'returning';
+        emit('voyage_moly');
+      }
+      break;
+  }
+
+  return { progress, beats };
 }
 
-/** This first chapter route uses existing map actors and the existing dungeon boss. */
-export const CHAPTERS: readonly StoryChapter[] = [
-  {
-    id: 'shore',
-    title: 'A broken oar',
-    objective: 'Speak to Kai by the village shore.',
-    event: { type: 'talk', key: 'kai', map: 'village' },
-  },
-  {
-    id: 'lotus',
-    title: 'The lotus promise',
-    objective: 'Speak to Mira in the village garden.',
-    event: { type: 'talk', key: 'mira', map: 'village' },
-  },
-  {
-    id: 'circe',
-    title: 'A spell of comfort',
-    objective: 'Enter a house leading to the cave; speak to the Fungus King.',
-    event: { type: 'talk', key: 'fungus_king', map: 'cave' },
-  },
-  {
-    id: 'underworld',
-    title: 'Those who never returned',
-    objective: 'Speak to Sister Ada in the same cave.',
-    event: { type: 'talk', key: 'cleric', map: 'cave' },
-  },
-  {
-    id: 'cyclops',
-    title: 'The name Nobody',
-    objective: 'Enter the sewer dungeon through house_5 and defeat its guardian.',
-    event: { type: 'victory', key: 'gumball_golem', map: 'dungeon' },
-  },
-  {
-    id: 'sirens',
-    title: 'The voice you leave behind',
-    objective: 'Return to the village and speak to Wren near the orchard.',
-    event: { type: 'talk', key: 'wren', map: 'village' },
-  },
-  {
-    id: 'home',
-    title: 'A promise kept',
-    objective: 'Speak to Old Tobin in the village to finish the homecoming.',
-    event: { type: 'talk', key: 'tobin', map: 'village' },
-  },
-];
+/** UI-independent objective text; the teammate decides where and how to display it. */
+export function voyageObjective(progress: VoyageProgress): string {
+  switch (progress.stage) {
+    case 'harbor':
+      return 'Board the black ship and begin the voyage home.';
+    case 'sailing':
+      return 'Find Circe’s island sanctuary. The crew needs fresh water and food.';
+    case 'landfall':
+      return progress.reason === 'food'
+        ? 'Search the sanctuary for supplies.'
+        : 'Follow the bronze markers toward the hidden hoard.';
+    case 'grotto':
+      return 'Survive the enchanted grotto and recover the moly in its chest.';
+    case 'returning':
+      return 'Bring the moly back to the black ship.';
+    case 'complete':
+      return 'Aeaea is behind you. The next island remains ahead; Ithaca is not reached yet.';
+  }
+}

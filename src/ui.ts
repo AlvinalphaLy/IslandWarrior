@@ -61,7 +61,7 @@ export function updateHud(s: PlayerStats) {
   const el = document.getElementById('hud')!;
   el.innerHTML =
     `<span>Lv ${s.level}</span><span>HP ${s.hp}/${s.maxHp}</span>` +
-    `<span class="hpbar"><i style="width:${Math.round((100 * s.hp) / s.maxHp)}%"></i></span><span>Potions ${s.potions}</span>`;
+    `<span class="hpbar"><i style="width:${Math.round((100 * s.hp) / s.maxHp)}%"></i></span><span>Ambrosia ${s.potions}</span>`;
 }
 
 // ---------------------------------------------------------------- battle panel
@@ -86,10 +86,10 @@ export const battleUi = {
   bars(_foe: string, foeHp: number, foeMax: number, me: PlayerStats) {
     q('.foe .v').textContent = `${foeHp}/${foeMax}`;
     q<HTMLElement>('.foe .bar i').style.width = `${(100 * foeHp) / foeMax}%`;
-    q('.me .n').textContent = `You (Lv ${me.level})`;
+    q('.me .n').textContent = `Odysseus (Lv ${me.level})`;
     q('.me .v').textContent = `${me.hp}/${me.maxHp}`;
     q<HTMLElement>('.me .bar i').style.width = `${(100 * me.hp) / me.maxHp}%`;
-    q('button[data-c=potion]').innerHTML = `<kbd>3</kbd>Potion (${me.potions})`;
+    q('button[data-c=potion]').innerHTML = `<kbd>3</kbd>Ambrosia (${me.potions})`;
   },
   log(text: string) {
     q('.log').textContent = text;

@@ -1,3 +1,4 @@
+import { VOYAGE_BEATS } from './voyage';
 /** Fixed scripts from the v2 team plan. Scene owners opt in through narrate(key). */
 export type Voice =
   'narrator' | 'oracle' | 'dragon' | 'telemachus' | 'spartan' | 'achilles' | 'kalos';
@@ -207,3 +208,6 @@ NARRATION.journey = [
     text: 'At last, you understand the way home. Not another conquest, but a promise kept. The sea grows quiet. Ithaca waits, and this time you know its name.',
   },
 ];
+
+/** Generate only the current boat-first island story with npm run voices -- --only=voyage. */
+NARRATION.voyage = Object.values(VOYAGE_BEATS).flat();

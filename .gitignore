@@ -21,3 +21,5 @@ Thumbs.db
 
 # Interrupted narration audio generation
 public/assets/voice/*.partial
+# generated team docs (PDFs)
+docs/

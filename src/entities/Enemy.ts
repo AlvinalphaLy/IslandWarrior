@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
-import { ENEMIES, EnemyDef } from '../data/enemies';
+import { ENEMIES, EnemyDef, GREEK_SHEETS } from '../data/enemies';
 
-/** A Fantasy Battlers monster standing on the map. Touching it starts a battle. */
-export class Enemy extends Phaser.Physics.Arcade.Image {
+/** A Fantasy Battlers or Odyssey monster standing on the map. Touching it starts a battle. */
+export class Enemy extends Phaser.Physics.Arcade.Sprite {
   readonly def: EnemyDef;
   readonly spawnName: string;
   readonly enemyId: string;
@@ -12,7 +12,8 @@ export class Enemy extends Phaser.Physics.Arcade.Image {
 
   constructor(scene: Phaser.Scene, x: number, y: number, enemyId: string, spawnName: string) {
     const def = ENEMIES[enemyId];
-    super(scene, x, y, def.sprite);
+    const animated = def.sprite in GREEK_SHEETS;
+    super(scene, x, y, def.sprite, animated ? 0 : undefined);
     this.def = def;
     this.enemyId = enemyId;
     this.spawnName = spawnName;
@@ -24,8 +25,11 @@ export class Enemy extends Phaser.Physics.Arcade.Image {
     const w = def.boss ? 40 : 14;
     body.setSize(w, 8);
     body.setOffset((this.width - w) / 2, this.height - 10);
-    body.setImmovable(true);
-    body.pushable = false;
+    body.pushable = false; // not immovable: immovable bodies pass through static walls in Arcade physics
+    if (animated) {
+      this.play({ key: `${def.sprite}-idle`, startFrame: Math.random() < 0.5 ? 0 : 1 });
+      return;
+    }
     // idle "breathing" so the static battle sprite feels alive on the map
     scene.tweens.add({
       targets: this,

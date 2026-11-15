@@ -46,6 +46,50 @@ export const DIALOG: Record<string, DialogEntry> = {
   sign_3: { name: 'Sign', lines: ['Fishing spot. Patience required.'] },
   sign_4: { name: 'Sign', lines: ['Welcome to the island!'] },
   sign_5: { name: 'Sign', lines: ['Garden. Please keep off the flowers.'] },
+  horse_statue: {
+    name: 'Wooden Horse',
+    lines: [
+      'A great horse carved from ship timber, rearing toward the sea.',
+      'The plaque reads: "Beware of Greeks bearing gifts."',
+    ],
+  },
+
+  // the ship of Odysseus: board it from the shore and sail it; the south edge of the map is the voyage to the lair
+  ship_board: {
+    name: 'The black ship',
+    lines: [
+      'All aboard. The crew needs fresh water and food. Sail toward the island sanctuary. Arrows/WASD steer; E goes ashore.',
+    ],
+  },
+  ship_noland: {
+    name: 'The black ship',
+    lines: ['No place to land here. Sail closer to the shore.'],
+  },
+  ship_voyage_locked: {
+    name: 'The black ship',
+    lines: ["The crew won't row into the open sea for an untested captain. Defeat Achilles first."],
+  },
+  ship_voyage_soon: {
+    name: 'The black ship',
+    lines: ["The Oracle has not yet shown the way to the dragon's lair."],
+  },
+  ship_sail: {
+    name: 'The black ship',
+    lines: ["The crew takes up the oars. Across the wine-dark sea to the dragon's lair!"],
+  },
+
+  // Circe's statue on the islet: closing these lines takes you into her grotto (tools/build_dungeon.py circe)
+  circe_statue: {
+    name: 'Statue of Circe',
+    lines: [
+      'A stone woman watches over the island sanctuary. Fresh water runs beneath her feet, but no one answers your scouts.',
+      'Beyond the sanctuary, a feast waits in the grotto. Your hungry crew has already gone inside...',
+    ],
+  },
+  chest_circe: {
+    name: 'Chest',
+    lines: ["A sprig of moly, the herb Hermes gave Odysseus against Circe's magic."],
+  },
 
   // ---- cave (under every house) ----
   fungus_king: {
@@ -79,7 +123,9 @@ export const DIALOG: Record<string, DialogEntry> = {
   // ---- sewer dungeon ----
   chest_golem: {
     name: 'Treasure',
-    lines: ["The Gumball Golem's hoard! You found the Sewer Crown."],
+    lines: [
+      "Polyphemus' hoard! Among the cheeses and wine jars lies a bronze helmet fit for a king of Ithaca.",
+    ],
   },
 };
 

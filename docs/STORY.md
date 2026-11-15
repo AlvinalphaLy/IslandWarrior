@@ -1,29 +1,95 @@
-# The long way home
+# The long way home: a boat-first Odyssey
 
-Open the game at `/` and select **Begin your Odyssey**. Finishing the opening starts a seven-chapter homecoming, told through original dialogue inspired by Homer's Odyssey rather than a movie transcript.
+## Story premise
 
-1. Speak to Kai by the shore: recover your purpose after Troy.
-2. Speak to Mira: resist the lotus promise of forgetting home.
-3. Enter a house leading to the cave and speak to the Fungus King: recall Circe's enchantment.
-4. Speak to Sister Ada in the same cave: listen to those who never returned.
-5. Enter the sewer dungeon through `house_5`, the lower/right dungeon entrance, and defeat the existing guardian: recall the Cyclops and the name Nobody.
-6. Return to Wren in the village: leave the Sirens' promise behind.
-7. Speak to Old Tobin: finish the homecoming story.
+Troy has fallen, but Odysseus has not won his way home. He boards the black ship with a hungry, exhausted crew. Ithaca is the destination; keeping his people alive is the reason to stop at each island. A promising harbor offers something the crew needs, then reveals a danger that tests the captain's judgment.
 
-The current maps, NPCs and existing guardian stage the journey. New Cyclops/Siren art, new islands and a literal voyage or Ithaca palace scene are not implemented. Battle damage, rewards, controls and map layouts are unchanged. The Gumball Golem remains the existing guardian; defeating it unlocks a narrated memory of Polyphemus.
+The repeating story loop is **board → sail → land for a reason → discover a threat → resolve the challenge → return to the crew → depart**. Challenges grow from the reason for landing. Treasure is tempting because it could repair the ship; food matters because someone must row tomorrow. Avoid a sequence of unrelated battles or a narrator who announces every danger before discovery.
 
-The objective widget updates after each completed episode. Its journal replays finished chapters without giving rewards or advancing objectives. E/Space reveals a line, then advances; Escape closes without completing a story objective. If the guardian was defeated before the quest, or you cancel its story popup after victory, **Continue guardian chapter** lets you finish the chapter without fighting a removed enemy.
+This is original dialogue inspired by Homer's Odyssey, not a movie transcript. Aeaea is the first playable stop because the latest map branch already contains Circe's sanctuary. That is an adaptation for this slice, not a claim that Circe is the first island in Homer's poem.
 
-Progress lives in Phaser's registry for this browser session and survives map changes. A page reload resets story progress alongside the game's existing session state. This is not a server save/load feature.
+## First island: a feast that forgets your name
 
-## Integration
+**Need:** the water jars are almost empty and the crew needs food. An optional treasure motive points toward bronze markers near the same sanctuary. Food is the default until the UI owner presents a choice.
 
-`src/story/state.ts` defines the ordered objectives and pure progression rules. `src/story/index.ts` mounts the objective/journal and routes matching events to the narration overlay. `MapScene` calls it for NPC interactions and confirmed victories. Ordinary conversations and chests keep their original behavior. Active narration pauses the map and clears held movement; closing resumes it. `?nostory` disables the widget and story interception for isolated gameplay testing.
+1. **Boarding.** The player steps aboard. The departure narration establishes Troy behind, Ithaca ahead, and responsibility for the crew. No new title screen or start button is required by this story module.
+2. **Landfall.** A green island seems deserted. Water, fruit and a welcoming sanctuary promise relief. The player can land near Circe's statue or approach it from the boat.
+3. **Reason to explore.** Food-minded Odysseus orders water before glory. A treasure-minded crew follows bronze objects toward the sanctuary. Both routes converge on the grotto; the choice changes the telling, not the existing game's economy or layout.
+4. **The welcome turns.** The sanctuary offers a feast and rest. Scouts stop answering. The real challenge is recognizing comfort as captivity, not simply attacking a woman because she is a witch.
+5. **The Oracle's warning.** This is Aeaea. Find moly, the white flower with the dark root, and bring it back before the spell makes the crew forget home. Existing shades and sirens stage the enchanted resistance; victory buys time rather than ending the whole story.
+6. **Discovery.** The existing Circe chest holds moly. Its actual potion/healing reward remains controlled by the game. The story records that the herb was recovered; it does not mint extra items or coins.
+7. **Return.** Reboarding with the herb breaks the island's hold on the crew. Water and bread are shared. The ship leaves with a lesson: a captain comes back with his people, not only with treasure.
 
-The new `journey` narration group contains 16 ElevenLabs-generated clips. Re-generate only edited story lines with `npm run voices -- --only=journey`. Clips reuse the configured narrator and Oracle voices; named villagers use those voices rather than adding new voice IDs.
+**Ending line:** “One island behind you. A long sea ahead. Remember the cost of a welcome that asks you to forget home. Ithaca is still waiting.”
+
+This completes the first island, not the entire Odyssey. The next destination remains a future episode.
+
+## Character direction
+
+- **Odysseus:** capable and tired, capable of pride, learning to measure success in people brought home.
+- **The Oracle:** brief warnings and questions rather than a solution to every puzzle. She names the danger after it is discovered.
+- **The crew:** the emotional reason for supplies, risk and retreat. Their safety matters even when the prototype represents it only through dialogue.
+- **Circe:** hospitality, power and the temptation to stop struggling. Avoid inventing a defeated-Circe boss when the map does not contain one.
+- **Narrator:** describes what changed because the player acted. Keep guidance short enough to preserve exploration.
+
+## Future island outline (not implemented)
+
+| Island / passage | Why land or continue | Challenge | Lesson carried forward |
+| --- | --- | --- | --- |
+| Lotus shore | Fruit and rest | Remember the crew's purpose instead of staying forever | Comfort can erase duty |
+| Cyclops cave | Sheep, cheese, shelter | Outsmart Polyphemus and choose whether pride is worth the risk | A victory can create a worse enemy |
+| Aeolus | A safe wind home | Preserve trust around a gift the crew misunderstands | Leadership requires trust |
+| The dead | Directions no living sailor knows | Hear hard counsel and remember lost companions | Listen before acting |
+| Sirens | A passage that promises knowledge | Prepare before the song begins | Wisdom includes restraint |
+| Narrow strait | The only route onward | Choose what can be saved under pressure | Not every danger can be conquered |
+| Ithaca | Home | Recognition, loyalty and restoring a household | Returning is more than arriving |
+
+The existing Polyphemus dungeon can support a later Cyclops episode. These rows are narrative direction, not completed maps or features.
+
+## UI-owner handoff
+
+`src/data/voyage.ts` contains the script cards by trigger. `src/story/state.ts` defines pure event progression and objective text. `src/story/index.ts` writes progress to Phaser's `odysseyVoyage` registry key and publishes `voyage-story` on the scene plus `odyssey:story` on `window`.
+
+**No homepage, journal, choice panel, portrait layout or automatic narration modal is created by these hooks.** The former seven-NPC checklist and sidebar are retired. Your teammate owns the presentation.
+
+Every cue contains `{ key, cards, progress, objective }`. A persistent queue in `odysseyStoryQueue` keeps cues from getting lost during a scene transition. The UI should consume the queue once and present its cards in order. Subscribe to the global event as a wake-up signal, rather than displaying both the event payload and queue independently.
+
+```ts
+import { publishVoyageEvent, takeVoyageCues } from './story';
+
+// On a rendered story-choice button, before entering the grotto:
+publishVoyageEvent(scene, { type: 'choose_reason', reason: 'treasure' });
+
+// After scene/UI readiness, and whenever odyssey:story signals new work:
+const cues = takeVoyageCues(scene);
+// Your UI queues cues.flatMap(cue => cue.cards) and owns scene pause/resume.
+```
+
+The existing approved `showNarration` component is available if desired; it is not automatically mounted in the game. Its presentation may be replaced by the teammate. Register/unregister the global listener with the UI lifecycle. If a modal is used, pause the appropriate map and clear held input so enemies and ship movement do not continue behind it.
+
+### Actual game hooks
+
+- `MapScene.board`: begins the voyage; reboarding with moly completes this island.
+- `MapScene.goAshore`: emits landfall only near Circe's sanctuary, not at the starting dock.
+- `MapScene.enterStatue`: records a ship arrival at the Circe destination.
+- `MapScene.create` for `circe`: emits challenge/discovery beats after the transition.
+- `MapScene.onBattleEnd`: emits first-victory text only after a real win in Circe's grotto.
+- Opening `chest_circe`: records moly once. A previously recovered chest reconciles when revisiting, so exploring before boarding does not soft-lock the story.
+
+Repeated boarding, kills, chest interactions and scene callbacks do not duplicate beats. Defeat and retreat do not count as victories. The first food/treasure selection locks once acknowledged. Story progress is session-only, matching the existing registry saves; it is not a backend save/load system.
+
+## Voice production
+
+The new boat-first script is the `voyage` narration group. Old trainer and homecoming clips are preserved as assets but are not used by the new game hooks. The new text must not play an old clip with different words.
+
+```sh
+npm run voices -- --dry-run --only=voyage
+# Once the team approves the new wording, generation uses ElevenLabs credits:
+npm run voices -- --only=voyage
+```
+
+Until generated, the new cards use the established text-only fallback if the UI owner plays them through the narration component. No additional voice accounts are required; the script uses the existing narrator and Oracle roles.
 
 ## Checks
 
-- `npm run test:integrations`: includes ordered quest progression and duplicate-event checks.
-- `npm run smoke:story`: exercises opening cancellation, NPC chapters, real battle victory, cancelled-victory recovery, return to village and completion.
-- `npm run smoke:narration`: checks controls, mobile layout and generated audio decoding.
+`npm run test:integrations` tests voyage order, idempotence, choices and early/out-of-order events. `npm run smoke:story` checks boarding, actual Circe scene entry, a real battle victory, chest recovery and reboarding with queued story cards. The upstream gameplay smoke separately checks ship controls, collision, Circe transitions and Greek combat. `npm run build` verifies the combined source.

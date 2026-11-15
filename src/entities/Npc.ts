@@ -28,7 +28,8 @@ export class Npc extends Character {
     this.dialogKey = dialogKey;
     this.displayName = name;
     const body = this.body as Phaser.Physics.Arcade.Body;
-    body.setImmovable(true);
+    // not pushable, so the player can't shove villagers around. Not `immovable` either: Arcade never separates an
+    // immovable body from static walls, which let villagers walk straight through rocks and fences.
     body.pushable = false;
     this.waitUntil = scene.time.now + Phaser.Math.Between(500, 2500);
   }
