@@ -2,7 +2,7 @@ import { CHALLENGE_BEATS } from './challenge-stories';
 import { VOYAGE_BEATS } from './voyage';
 /** Fixed scripts from the v2 team plan. Scene owners opt in through narrate(key). */
 export type Voice =
-  'narrator' | 'oracle' | 'dragon' | 'telemachus' | 'spartan' | 'achilles' | 'kalos';
+  'narrator' | 'oracle' | 'dragon' | 'telemachus' | 'spartan' | 'achilles' | 'kalos' | 'mira';
 export interface NarrationCard {
   key: string;
   speaker: string;
@@ -232,13 +232,13 @@ NARRATION.homecoming = [
   },
 ];
 
-/** The homecoming's end, at Mira's side (MapScene.homeArrived), before MISSIONS COMPLETE. Mira speaks in the
- * Oracle's warm voice (the only female voice configured). */
+/** The homecoming's end, at Mira's side (MapScene.homeArrived), before MISSIONS COMPLETE. Mira speaks in her
+ * own voice (ELEVENLABS_VOICE_MIRA). */
 NARRATION.homecoming_welcome = [
   {
     key: 'homecoming_mira',
     speaker: 'Mira',
-    voice: 'oracle',
+    voice: 'mira',
     text: 'Odysseus! The whole island watched the sea for your sail. Welcome home to Ithaca.',
   },
   {

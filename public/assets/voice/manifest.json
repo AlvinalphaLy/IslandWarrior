@@ -406,11 +406,11 @@
     "voice": "auq43ws1oslv0tO4BDa7"
   },
   "homecoming_mira": {
-    "hash": "06225c16caa2d7e8c570b14ccc9d99039586ffcb8bbee087c1996f275f48c928",
+    "hash": "a1428a219a820e4d8e79f04956ea15e278bb1800fc49500361b1886e1e22ced6",
     "file": "homecoming_mira.mp3",
     "provider": "ElevenLabs",
     "model": "eleven_multilingual_v2",
-    "voice": "OZ0L6eISlOejga3XjDFt"
+    "voice": "jTAlT4VvvXlYNDrxqpNQ"
   },
   "homecoming_3": {
     "hash": "cbb525fcadf13b6ef22673cbb48d0b0c5e38475abc1d311672e1804510333bea",
