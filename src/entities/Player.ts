@@ -9,7 +9,8 @@ export interface MoveInput {
 }
 
 export class Player extends Character {
-  speed = 64;
+  /** px/s; walk animations play at speed / 64 so the feet keep pace (the sheets are timed for 64 px/s) */
+  speed = 96;
   frozen = false;
 
   constructor(scene: Phaser.Scene, x: number, y: number, sheet = 'adam') {
@@ -28,6 +29,7 @@ export class Player extends Character {
       vx *= Math.SQRT1_2;
       vy *= Math.SQRT1_2;
     }
+    this.anims.timeScale = this.speed / 64;
     this.move(vx * this.speed, vy * this.speed);
   }
 
