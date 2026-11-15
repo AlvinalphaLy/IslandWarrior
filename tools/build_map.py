@@ -110,8 +110,8 @@ for cy in range(H):
 # areas emptied on purpose: every reconstructed object in them (trees, flowers, rocks) is dropped, along with its
 # collision. patch_map.py and verify_map.py read them from the map property `clearedAreas` and leave them alone.
 CLEARED_AREAS = [
-    (266, 290, 342, 346),   # the islet in the bay: only Circe's statue stands there
-    (400, 336, 444, 364),   # the small south-east islet: its rock makes way for the Cyclops head
+    (266, 290, 342, 346),   # the islet in the bay: only the Cyclops head stands there
+    (400, 336, 444, 364),   # the small south-east islet: its rock makes way for Circe's statue
 ]
 def cleared(o):
     cx, cy = o['x'] + TS / 2, o['y'] + TS / 2
@@ -440,20 +440,20 @@ spawn_objs.append(dict(id=next_id(), name='horse_statue', type='statue', x=330.0
                        properties=[dict(name='sprite', type='string', value='horse_statue'),
                                    dict(name='dialog', type='string', value='horse_statue'),
                                    dict(name='footW', type='int', value=40), dict(name='footH', type='int', value=11)]))
-# Circe, the witch of Aeaea (tools/make_witch_statue.py): a player-sized stone statue on the islet in the bay, wrapped
+# Circe, the witch of Aeaea (tools/make_witch_statue.py): a player-sized stone statue on the small south-east islet, wrapped
 # in a black aura. Sail up to it (or land on the islet) and press E to enter her grotto (`target`).
 # arrive = where you stand when you come back on foot (by ship you're put back at the helm).
-spawn_objs.append(dict(id=next_id(), name='circe_statue', type='statue', x=304.0, y=332.0, point=True, width=0, height=0,
+spawn_objs.append(dict(id=next_id(), name='circe_statue', type='statue', x=424.0, y=364.0, point=True, width=0, height=0,
                        rotation=0, visible=True,
                        properties=[dict(name='sprite', type='string', value='witch_statue'),
                                    dict(name='dialog', type='string', value='circe_statue'),
                                    dict(name='aura', type='bool', value=True),
                                    dict(name='target', type='string', value='circe'),
-                                   dict(name='arrive', type='string', value='286,335'),
+                                   dict(name='arrive', type='string', value='424,374'),
                                    dict(name='footW', type='int', value=12), dict(name='footH', type='int', value=5)]))
-# the stone head of Polyphemus (tools/make_cyclops_head.py), half sunk into the small south-east islet, gazing at the
+# the stone head of Polyphemus (tools/make_cyclops_head.py), half sunk into the islet in the bay, gazing at the
 # bay. Read it from the ship's deck. (x, y) = bottom centre of its rubble mound.
-spawn_objs.append(dict(id=next_id(), name='cyclops_head', type='statue', x=424.0, y=372.0, point=True, width=0, height=0,
+spawn_objs.append(dict(id=next_id(), name='cyclops_head', type='statue', x=304.0, y=342.0, point=True, width=0, height=0,
                        rotation=0, visible=True,
                        properties=[dict(name='sprite', type='string', value='cyclops_head'),
                                    dict(name='dialog', type='string', value='cyclops_head'),
