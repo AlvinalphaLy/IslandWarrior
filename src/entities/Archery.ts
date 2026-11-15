@@ -810,7 +810,8 @@ export class Archery {
       this.bubble(su.spr.x, su.spr.y - 30, '...!');
     }
     this.scene.cameras.main.flash(200, 255, 236, 170);
-    this.host.say('suitor_amazed', () => this.host.say('bow_found'));
+    // one chat: the bow's line (Antinous' astonishment is the '...!' bubble above his head)
+    this.host.say('bow_found');
   }
 
   // ---------------------------------------------------------------- the bow

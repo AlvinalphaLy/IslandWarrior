@@ -224,6 +224,8 @@ export class MapScene extends Phaser.Scene {
   private edgeToastAt = 0;
   /** statues that lead somewhere (Circe's): where they stand and where you reappear on foot */
   private statues: StatueSpot[] = [];
+  /** whether the statue being woken was reached from the ship (its awakening leads straight into the challenge) */
+  private awakenByShip = false;
   /** statues with only a plaque to read (no dungeon): readable on foot, or from the ship's deck */
   private readableStatues: { it: Interactable; x: number; y: number }[] = [];
   /** a short scripted sequence (Circe's statue rising) is playing: no input */
@@ -1128,6 +1130,7 @@ export class MapScene extends Phaser.Scene {
 
   /** Read the statue's lines; closing them takes you into its dungeon. While the lure stands there, open it instead. */
   private openStatue(it: Interactable, byShip: boolean) {
+    this.awakenByShip = byShip;
     const spot = this.statues.find((st) => st.it === it);
     if (spot?.asleep) {
       if (spot.style === 'pour') return this.pourWine(spot);
@@ -1336,7 +1339,8 @@ export class MapScene extends Phaser.Scene {
     });
     at(3500, () => {
       this.cutscene = false;
-      this.dialog = { entry: dialogFor('circe_awaken'), line: 0, target: st.it };
+      // one chat: closing it takes you straight into the statue's challenge
+      this.dialog = { entry: dialogFor('circe_awaken'), line: 0, target: st.it, onClose: () => this.enterStatue(st.it, this.awakenByShip) };
       this.renderDialog();
     });
   }
@@ -1456,7 +1460,8 @@ export class MapScene extends Phaser.Scene {
     });
     at(3000, () => {
       this.cutscene = false;
-      this.dialog = { entry: dialogFor(`${st.it.id}_awaken`), line: 0, target: st.it };
+      // one chat: closing it takes you straight into the statue's challenge
+      this.dialog = { entry: dialogFor(`${st.it.id}_awaken`), line: 0, target: st.it, onClose: () => this.enterStatue(st.it, this.awakenByShip) };
       this.renderDialog();
     });
   }
@@ -1515,7 +1520,8 @@ export class MapScene extends Phaser.Scene {
     }
     this.time.delayedCall(2400, () => {
       this.cutscene = false;
-      this.dialog = { entry: dialogFor(`${st.it.id}_awaken`), line: 0, target: st.it };
+      // one chat: closing it takes you straight into the statue's challenge
+      this.dialog = { entry: dialogFor(`${st.it.id}_awaken`), line: 0, target: st.it, onClose: () => this.enterStatue(st.it, this.awakenByShip) };
       this.renderDialog();
     });
   }
@@ -1600,7 +1606,8 @@ export class MapScene extends Phaser.Scene {
     });
     at(2600, () => {
       this.cutscene = false;
-      this.dialog = { entry: dialogFor(`${st.it.id}_awaken`), line: 0, target: st.it };
+      // one chat: closing it takes you straight into the statue's challenge
+      this.dialog = { entry: dialogFor(`${st.it.id}_awaken`), line: 0, target: st.it, onClose: () => this.enterStatue(st.it, this.awakenByShip) };
       this.renderDialog();
     });
   }

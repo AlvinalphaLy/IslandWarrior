@@ -48,10 +48,10 @@ export const DIALOG: Record<string, DialogEntry> = {
   sign_5: { name: 'Sign', lines: ['Garden. Please keep off the flowers.'] },
   // the head of Polyphemus: pour the amphora of wine into its mouth (pourWine), then E at the head enters his cave
   cyclops_head: { name: 'Head of Polyphemus', lines: ["The stone jaw gapes open, breathing wine and the smell of sheep. You climb down into the dark..."] },
-  cyclops_head_awaken: { name: 'Polyphemus', lines: ["\"Wine! What is your name?\" \"Nobody.\" The stone jaw grinds open: press E at the head to enter."] },
+  cyclops_head_awaken: { name: 'Polyphemus', lines: ["\"Wine! What is your name?\" \"Nobody.\" The stone jaw grinds open, and you climb down into the dark..."] },
   // ---- the Laestrygonians: the giant's fist on the narrow islet, and their harbour (src/entities/Harbor.ts) ----
   homer: { name: 'Homer', lines: ["The golden lyre rings, and a wave sweeps the ship into the tale..."] },
-  homer_awaken: { name: 'Homer', lines: ["Homer's stone lyre turns to gold as he sings of the giants. Press E at Homer to sail into the tale."] },
+  homer_awaken: { name: 'Homer', lines: ["Homer's stone lyre turns to gold as he sings of the giants, and a wave sweeps the ship into the tale..."] },
   harbor_intro: {
     name: 'Telepylus',
     lines: [
@@ -105,7 +105,7 @@ export const DIALOG: Record<string, DialogEntry> = {
 
   // Circe's statue on the islet: closing these lines takes you into her grotto (tools/build_dungeon.py circe)
   circe_statue: { name: 'Statue of Circe', lines: ["Black smoke curls around you and pulls you down into Circe's grotto..."] },
-  circe_awaken: { name: 'Circe', lines: ["A stone witch rises where the treasure stood. Press E at her statue to enter her grotto."] },
+  circe_awaken: { name: 'Circe', lines: ["A stone witch rises where the treasure stood, and black smoke pulls you down into her grotto..."] },
   chest_circe: {
     name: 'Chest',
     lines: ["A sprig of moly, the herb Hermes gave Odysseus against Circe's magic."],
