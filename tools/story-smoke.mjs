@@ -86,56 +86,31 @@ try {
       potions: 3,
     });
     for (const enemy of scene.enemies) enemy.stunnedUntil = 100000;
-    scene.enemies[0].stunnedUntil = 0;
-    scene.startBattle(scene.enemies[0]);
+    const boss = scene.enemies.find((enemy) => enemy.spawnName === 'siren_b');
+    boss.stunnedUntil = 0;
+    scene.startBattle(boss);
   });
   await page.waitForFunction(() => window.game.scene.isActive('battle'));
   await pause(1100);
   await page.keyboard.press('1');
-  await page.waitForFunction(
-    () => window.game.registry.get('odysseyVoyage').seen.includes('voyage_first_victory'),
-    { timeout: 12000 },
-  );
-
+  // The teammate's boss now automatically collects the chest, shows victory and returns to the boat.
+  await page.waitForFunction(() => window.game.scene.isActive('village'), { timeout: 15000 });
   await finishStory(true);
-
-  // Recover the existing chest through interaction, keeping its original inventory rewards.
-  await page.evaluate(() => {
-    const scene = window.game.scene.getScene('circe');
-    const chest = scene.interactables.find((entry) => entry.dialog === 'chest_circe');
-    scene.player.setPosition(chest.rect.centerX, chest.rect.bottom + 8);
-    scene.player.face('up');
-    scene.interact();
-  });
   assert.equal(
     await page.evaluate(() => window.game.registry.get('odysseyVoyage').stage),
-    'returning',
+    'complete',
   );
   assert.ok(
     await page.evaluate(() => window.game.registry.get('openedChests').includes('chest_circe')),
   );
-
-  // Close the ordinary chest dialogue before its queued voiced story takes over.
-  for (
-    let i = 0;
-    i < 8 && (await page.evaluate(() => !!window.game.scene.getScene('circe').dialog));
-    i++
-  ) {
-    await page.keyboard.press('e');
-    await pause(80);
-  }
-  await finishStory(true);
-
-  // Returning via the existing statue landing quietly boards the player and finishes this island only.
-  await page.evaluate(() => window.game.scene.start('village', { from: 'circe_statue' }));
-  await page.waitForFunction(() => window.game.registry.get('odysseyVoyage').stage === 'complete');
-  await finishStory(true);
+  assert.ok(await page.evaluate(() => window.game.registry.get('challengesWon').includes('circe')));
   const beats = await page.evaluate(() => window.__storyBeats);
   assert.equal(await page.evaluate(() => window.game.registry.get('odysseyStoryQueue').length), 0);
   assert.ok(beats.includes('voyage_departure'));
   assert.ok(beats.includes('voyage_landfall'));
   assert.ok(beats.includes('voyage_challenge'));
   assert.ok(beats.includes('voyage_moly'));
+  assert.ok(beats.includes('circe_success'));
   assert.ok(beats.includes('voyage_departure_aeaea'));
   assert.equal(new Set(beats).size, beats.length);
   assert.deepEqual(errors, []);

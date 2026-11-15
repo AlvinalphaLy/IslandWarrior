@@ -198,7 +198,19 @@ for cy in range(H):
 # areas emptied on purpose: every reconstructed object in them (trees, flowers, rocks) is dropped, along with its
 # collision. patch_map.py and verify_map.py read them from the map property `clearedAreas` and leave them alone.
 CLEARED_AREAS = [
-    (266, 290, 342, 346),  # the islet in the bay: only Circe's statue stands there
+    (266, 290, 342, 346),  # the islet in the bay: only the Cyclops head stands there
+    (
+        400,
+        336,
+        444,
+        364,
+    ),  # the small south-east islet: its rock makes way for Circe's statue
+    (
+        184,
+        344,
+        216,
+        392,
+    ),  # the narrow islet south of the bay: its flower makes way for Homer's statue
 ]
 
 
@@ -719,7 +731,7 @@ spawn_objs.append(
         ],
     )
 )
-# Circe, the witch of Aeaea (tools/make_witch_statue.py): a player-sized stone statue on the islet in the bay, wrapped
+# Circe, the witch of Aeaea (tools/make_witch_statue.py): a player-sized stone statue on the small south-east islet, wrapped
 # in a black aura. Sail up to it (or land on the islet) and press E to enter her grotto (`target`).
 # arrive = where you stand when you come back on foot (by ship you're put back at the helm).
 spawn_objs.append(
@@ -727,8 +739,8 @@ spawn_objs.append(
         id=next_id(),
         name="circe_statue",
         type="statue",
-        x=304.0,
-        y=332.0,
+        x=424.0,
+        y=364.0,
         point=True,
         width=0,
         height=0,
@@ -738,10 +750,68 @@ spawn_objs.append(
             dict(name="sprite", type="string", value="witch_statue"),
             dict(name="dialog", type="string", value="circe_statue"),
             dict(name="aura", type="bool", value=True),
+            # a treasure chest stands here first; opening it (E, from the ship or on foot) raises the statue
+            dict(name="lure", type="string", value="treasure_chest"),
             dict(name="target", type="string", value="circe"),
-            dict(name="arrive", type="string", value="286,335"),
+            dict(name="arrive", type="string", value="424,374"),
             dict(name="footW", type="int", value=12),
             dict(name="footH", type="int", value=5),
+        ],
+    )
+)
+# the stone head of Polyphemus (tools/make_cyclops_head.py), half sunk into the islet in the bay, gazing at the
+# bay. Land the ship on the islet to read it. (x, y) = bottom centre of its rubble mound.
+spawn_objs.append(
+    dict(
+        id=next_id(),
+        name="cyclops_head",
+        type="statue",
+        x=304.0,
+        y=342.0,
+        point=True,
+        width=0,
+        height=0,
+        rotation=0,
+        visible=True,
+        properties=[
+            dict(name="sprite", type="string", value="cyclops_head"),
+            dict(name="dialog", type="string", value="cyclops_head"),
+            # Maron's wine (tools/make_amphora.py) stands beside it: pour it into the mouth
+            # (E, on foot or from the ship) and the jaw opens onto Polyphemus' cave
+            dict(name="lure", type="string", value="amphora"),
+            dict(name="lureAt", type="string", value="326,340"),
+            dict(name="awaken", type="string", value="pour"),
+            dict(name="aura", type="string", value="wine"),
+            dict(name="target", type="string", value="cyclops"),
+            dict(name="arrive", type="string", value="282,340"),
+            dict(name="footW", type="int", value=26),
+            dict(name="footH", type="int", value=9),
+        ],
+    )
+)
+# a marble statue of Homer with his lyre (tools/make_laestrygon_props.py) on the narrow islet south of the bay. The first
+# E (on foot or from the ship) makes him sing (the lyre turns gold) the tale of the Laestrygonians; after that E sweeps
+# the ship into the giants' harbour (tools/build_harbor.py), which you escape by sailing out under their boulders.
+spawn_objs.append(
+    dict(
+        id=next_id(),
+        name="homer",
+        type="statue",
+        x=199.0,
+        y=378.0,
+        point=True,
+        width=0,
+        height=0,
+        rotation=0,
+        visible=True,
+        properties=[
+            dict(name="sprite", type="string", value="homer"),
+            dict(name="dialog", type="string", value="homer"),
+            dict(name="awaken", type="string", value="sing"),
+            dict(name="target", type="string", value="telepylus"),
+            dict(name="arrive", type="string", value="199,388"),
+            dict(name="footW", type="int", value=14),
+            dict(name="footH", type="int", value=6),
         ],
     )
 )

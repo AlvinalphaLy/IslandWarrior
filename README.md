@@ -17,6 +17,7 @@ npm run dev        # http://localhost:5173
 | Board the black ship (stand on the beach by it, press E) | Sail it with WASD / arrows: it only moves on open water, turns to face its heading and leaves a wake. Press E near any shore to step off; the ship stays where you left it. Sailing off the south edge of the map is the voyage to the `lair` scene, once `achilles` is in the registry's `unlocks`; until then the crew refuses. Coming home lands you on the beach with the ship back at its mooring. |
 | Circe's statue (the islet in the bay) | Sail up beside the islet and press E from the ship, or land and press E facing it. You enter **Circe's grotto** (`circe` map: `npm run map:circe`, a violet variant of the sewer dungeon with sirens, shades and a chest of moly). The ladder brings you back where you came from: at the helm if you came by ship, otherwise beside the statue. |
 | Walk up into a ladder | Climbs back out through the door you came in by |
+| Win a statue challenge | Crushing Polyphemus (Cyclops den) or beating the Siren (Circe's grotto) hands you that dungeon's hoard and returns you to the ship's helm automatically, however you arrived. The bosses and chests are listed in `CHALLENGES` in `src/scenes/MapScene.ts`. |
 | Touch a monster (dungeon) | Starts a battle. **1–4** or the arrow keys + Enter choose Attack / Defend / Potion / Run. |
 | C | Change the player's skin: Adam → Zeus → Hermes → Hades → Heracles → Aphrodite |
 | M | Toggle whole-map overview |
@@ -135,3 +136,9 @@ npm run format:check
 ```
 
 Python scripts use Black (`requirements-dev.txt`): `python3 -m black tools/` and `python3 -m black --check tools/`. Formatter configuration excludes generated maps, assets, lockfiles and private environment files. `.editorconfig` carries the indentation settings into compatible editors.
+
+## Voiced Odyssey story
+
+Board the black ship with **E** to hear the opening story. Visit the Circe, Cyclops and Homer statues to play their island challenges. Story captions and ElevenLabs voices follow actual discoveries, wins and failures. Success narration waits until the victory banner and automatic boat return finish. In the Cyclops den, pick up the bow and press **F** from the chalk mark to shoot.
+
+Keep `npm run dev` running while testing. Use the terminal’s Local URL. **E/Space** reveals a story line and advances it; **Escape** skips the current batch. The speaker control unmutes narration. See [story and integration notes](docs/STORY.md) and [merge review](docs/MERGE_REVIEW.md). Run `npm run smoke:challenges` for all three challenge paths, or `npm run smoke:story` for the boat/Circe narration flow. Existing low-level gameplay smoke uses `?story=off`.

@@ -240,7 +240,7 @@ console.log(
 await hold('KeyW', 300);
 const walked = await shipState();
 console.log('walk after landing:', walked.player.y < ashore.player.y ? 'OK' : 'FAIL');
-// board again and hold Down from the mooring: the ship should find the channel to the open sea, where the crew refuses
+// Board again and place the boat below the latest islands; test the real sea-edge unlock.
 await page.evaluate(() => {
   const s = window.game.scene.getScene('village');
   s.ship.pos.set(406, 292);
@@ -249,8 +249,17 @@ await page.evaluate(() => {
 });
 await new Promise((r) => setTimeout(r, 200));
 await tap('KeyE');
-await hold('KeyA', 700);
-await hold('KeyS', 5000);
+await page.evaluate(() => {
+  const s = window.game.scene.getScene('village');
+  // Sailing and collision were checked above. Isolate the sea-edge unlock from the new islet geometry.
+  const lane = Array.from({ length: 158 }, (_, i) => 40 + i * 4).find((x) =>
+    Array.from({ length: 11 }, (_, i) => 376 + i * 2).every((y) => s.ship.landAt(x, y) === 0),
+  );
+  if (lane === undefined)
+    throw new Error('No clear southbound test lane on the current village map');
+  s.ship.pos.set(lane, 376);
+});
+await hold('KeyS', 1800);
 const sea = await shipState();
 console.log('reach the open sea (south edge):', sea.y, sea.y > 385 ? 'OK' : 'FAIL');
 console.log(
@@ -386,9 +395,50 @@ await page.evaluate(() => {
 });
 await new Promise((r) => setTimeout(r, 200));
 await tap('KeyE'); // board
-await page.evaluate(() => window.game.scene.getScene('village').ship.pos.set(318, 350)); // just south of the islet
+await page.evaluate(() => window.game.scene.getScene('village').ship.pos.set(375, 372)); // beside Circe's islet (south-east)
 await new Promise((r) => setTimeout(r, 300));
 await page.screenshot({ path: 'cache/shot_statue.png' });
+// first visit: a treasure chest stands there. E opens it (+50 gold) and Circe's statue rises in its place
+const chestBefore = await page.evaluate(() => {
+  const s = window.game.scene.getScene('village');
+  const st = s.statues.find((t) => t.it.id === 'circe_statue');
+  return { chest: !!st.chest, statue: st.sprite.visible };
+});
+await tap('KeyE');
+await new Promise((r) => setTimeout(r, 1900));
+await page.screenshot({ path: 'cache/shot_awaken_mid.png' });
+await new Promise((r) => setTimeout(r, 1900));
+const risen = await page.evaluate(() => {
+  const s = window.game.scene.getScene('village');
+  const st = s.statues.find((t) => t.it.id === 'circe_statue');
+  return {
+    chest: !!st.chest,
+    statue: st.sprite.visible,
+    cropped: st.sprite.isCropped,
+    y: st.sprite.y,
+    dialog: document.querySelector('#dialog .name').textContent,
+    hud: document.getElementById('hud').innerText,
+    awakened: window.game.registry.get('awakened'),
+  };
+});
+console.log(
+  'chest opens, statue rises:',
+  JSON.stringify(chestBefore),
+  JSON.stringify(risen),
+  chestBefore.chest &&
+    !chestBefore.statue &&
+    !risen.chest &&
+    risen.statue &&
+    !risen.cropped &&
+    risen.y === 364 &&
+    risen.dialog === 'Circe' &&
+    risen.hud.includes('Gold 50')
+    ? 'OK'
+    : 'FAIL',
+);
+await page.screenshot({ path: 'cache/shot_awaken_end.png' });
+await tap('KeyE');
+await tap('KeyE'); // close Circe's lines
 await tap('KeyE');
 const statueDlg = await page.evaluate(() => document.querySelector('#dialog .name').textContent);
 console.log('statue from the ship:', statueDlg, statueDlg.includes('Circe') ? 'OK' : 'FAIL');
@@ -416,7 +466,7 @@ const helm = await shipState();
 console.log(
   'back at the helm by the islet:',
   JSON.stringify(helm),
-  helm.scene === 'village' && helm.sailing && helm.x === 318 && helm.y === 350 ? 'OK' : 'FAIL',
+  helm.scene === 'village' && helm.sailing && helm.x === 375 && helm.y === 372 ? 'OK' : 'FAIL',
 );
 // on foot: land on the islet, walk up to the statue, E -> grotto -> back beside the statue
 await tap('KeyE'); // the statue is in reach of the ship, so this opens it again; close without entering is not possible,
@@ -433,10 +483,10 @@ await page.evaluate(() => {
   s.player.frozen = false;
   s.ship.pos.set(406, 292); // park the ship back at its mooring, out of the way
   document.querySelector('#dialog .name').textContent = '';
-  s.player.setPosition(288, 335);
-  s.player.body.reset(288, 335);
-  s.player.setPosition(288, 335);
-  s.player.face('right');
+  s.player.setPosition(424, 374);
+  s.player.body.reset(424, 374);
+  s.player.setPosition(424, 374);
+  s.player.face('up');
   s.cameras.main.startFollow(s.player);
 });
 await new Promise((r) => setTimeout(r, 200));
@@ -460,8 +510,8 @@ console.log(
   foot.scene === 'village' &&
     !foot.sailing &&
     foot.player.visible &&
-    Math.abs(foot.player.x - 286) < 6 &&
-    Math.abs(foot.player.y - 335) < 6
+    Math.abs(foot.player.x - 424) < 6 &&
+    Math.abs(foot.player.y - 374) < 6
     ? 'OK'
     : 'FAIL',
 );

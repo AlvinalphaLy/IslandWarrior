@@ -1,14 +1,26 @@
 import { installVoyagePlayback, voyagePlaybackBlocks } from '../story/playback';
 import { publishVoyageEvent } from '../story';
+import type { ChallengeId } from '../story/state';
 import Phaser from 'phaser';
 import { Player } from '../entities/Player';
 import { Npc } from '../entities/Npc';
 import { PLAYER_SKINS } from '../entities/Character';
 import { dialogFor, DialogEntry } from '../data/dialog';
-import { touch, setActionHandler, showDialog, toast, updateHud } from '../ui';
+import {
+  touch,
+  setActionHandler,
+  setShootHandler,
+  showDialog,
+  toast,
+  updateHud,
+  showVictory,
+  hideVictory,
+} from '../ui';
 import { Enemy } from '../entities/Enemy';
 import { Ship } from '../entities/Ship';
-import { CHEST_REWARDS, ENEMIES, PlayerStats, START_STATS } from '../data/enemies';
+import { Archery } from '../entities/Archery';
+import { Harbor } from '../entities/Harbor';
+import { CHEST_REWARDS, ENEMIES, FX_FRAME, PlayerStats, START_STATS } from '../data/enemies';
 import type { BattleData, BattleResult } from './BattleScene';
 
 const FLIP_H = 0x80000000;
@@ -64,6 +76,40 @@ interface Interactable {
   requires?: string;
 }
 /** A door (village houses) or exit (cave ladder): walking up into it moves to `target`. */
+/**
+ * A statue that leads into a dungeon. `chest`: the lure still standing there, until it is used.
+ * `style`: how the lure wakes the statue - 'rise' (Circe: the chest is bait, the statue rises from the ground) or
+ * 'pour' (Polyphemus: the statue is already there; you pour the amphora of wine into its mouth).
+ * `aura`: the aura colour once awake (AURAS), or null for none.
+ */
+interface StatueSpot {
+  it: Interactable;
+  x: number;
+  y: number;
+  arrive: Phaser.Math.Vector2;
+  sprite: Phaser.GameObjects.Sprite;
+  aura: AuraStyle | null;
+  chest: Phaser.GameObjects.Sprite | null;
+  style: 'rise' | 'pour' | 'hurl' | 'sing';
+  /** not woken yet: the first E plays its awakening instead of entering */
+  asleep: boolean;
+}
+/** Aura palettes: the glow hugging the statue, the pool at its feet, and the two wisp textures rising from it. */
+const AURAS = {
+  black: {
+    glow: '#07020c',
+    shadow: '#000000',
+    pool: 0x000000,
+    wisps: ['aura_wisp_black', 'aura_wisp_violet'],
+  },
+  wine: {
+    glow: '#5c0820',
+    shadow: '#2a0010',
+    pool: 0x3a0418,
+    wisps: ['aura_wisp_wine', 'aura_wisp_purple'],
+  },
+} as const;
+type AuraStyle = keyof typeof AURAS;
 interface Portal {
   id: string;
   kind: 'door' | 'exit';
@@ -82,6 +128,36 @@ export interface MapSceneData {
  * Generic Tiled-driven map scene. Layer conventions (see tools/build_map.py, tools/build_cave.py):
  * Ground0..2 tile layers, Objects (tile objects with sortY/z), Collision rects, Spawns (player/npc/sign/chest/door/exit).
  */
+/**
+ * Statue dungeons whose challenge ends with a trip back to the ship: once `boss` (a Spawns name) is defeated (crushed
+ * by the boulder or beaten in battle), its hoard `chest` is collected for you and you're returned to the helm of the
+ * ship on the map you came from. `delay` lets the win play out first (the Cyclops' boulder cutscene runs ~3.2 s).
+ */
+const CHALLENGES: Record<string, { name: string; boss: string; chest: string; delay: number }> = {
+  cyclops: {
+    name: 'The Cave of Polyphemus',
+    boss: 'polyphemus',
+    chest: 'chest_cyclops',
+    delay: 3600,
+  },
+  circe: { name: "Circe's Grotto", boss: 'siren_b', chest: 'chest_circe', delay: 1800 },
+};
+/** how long the VICTORY banner shows before the trip back to the island (ms) */
+const VICTORY_MS = 4200;
+/**
+ * What each challenge gives the first time it is won (on top of its hoard, and the full heal every win gives):
+ *   wine  Maron's wine, the Cyclops' undoing: max HP +WINE_HP for good
+ *   ship  the black ship rebuilt with a bronze hull and a crimson war sail: faster on every map, and in the
+ *         Laestrygonian harbour faster still and taking half damage (registry `shipLevel`)
+ *   skin  the FaZe Odysseus skin (PLAYER_SKINS, unlock 'circe'): put on at once, then in the C cycle
+ */
+const PRIZES: Record<string, 'wine' | 'ship' | 'skin'> = {
+  cyclops: 'wine',
+  telepylus: 'ship',
+  circe: 'skin',
+};
+const WINE_HP = 10;
+
 export class MapScene extends Phaser.Scene {
   private raw!: TiledMap;
   private player!: Player;
@@ -108,12 +184,20 @@ export class MapScene extends Phaser.Scene {
   private vignette: Phaser.GameObjects.Image | null = null;
   /** the sailable ship (village only), its interactable, and the talk area relative to its waterline centre */
   private ship: Ship | null = null;
+  /** Odysseus' bow: arrows, targets, gates, axes and sheep (Spawns of those types; see Archery.ts) */
+  private archery: Archery | null = null;
+  /** the Laestrygonian harbour escape (map property `harbor`; see Harbor.ts) */
+  private harbor: Harbor | null = null;
   private shipIt: Interactable | null = null;
   private shipTalk = new Phaser.Geom.Rectangle();
   private sailing = false;
   private edgeToastAt = 0;
   /** statues that lead somewhere (Circe's): where they stand and where you reappear on foot */
-  private statues: { it: Interactable; x: number; y: number; arrive: Phaser.Math.Vector2 }[] = [];
+  private statues: StatueSpot[] = [];
+  /** statues with only a plaque to read (no dungeon): readable on foot, or from the ship's deck */
+  private readableStatues: { it: Interactable; x: number; y: number }[] = [];
+  /** a short scripted sequence (Circe's statue rising) is playing: no input */
+  private cutscene = false;
   /** coming back from a statue's dungeon by ship: start at the helm */
   private boardOnStart = false;
   private inBattle = false;
@@ -140,7 +224,9 @@ export class MapScene extends Phaser.Scene {
     this.shipIt = null;
     this.sailing = false;
     this.statues = [];
+    this.readableStatues = [];
     this.boardOnStart = false;
+    this.cutscene = false;
     this.vignette = null;
     this.inBattle = false;
     this.safeUntil = 0;
@@ -160,13 +246,34 @@ export class MapScene extends Phaser.Scene {
     this.placeObjects();
     this.buildCollision();
     this.spawnActors();
+    this.archery = new Archery(
+      { scene: this, walls: this.walls, player: this.player, say: (key) => this.say(key) },
+      this.layer('Spawns'),
+      this.layer('Collision'),
+    );
+    // the harbour of the Laestrygonians: you start at the helm and must sail out under the giants' boulders
+    this.harbor =
+      prop(this.raw, 'harbor', false) && this.ship
+        ? new Harbor(
+            {
+              scene: this,
+              ship: this.ship,
+              say: (key) => this.say(key),
+              leave: (escaped, rewards) => this.leaveHarbor(escaped, rewards),
+            },
+            this.layer('Spawns'),
+          )
+        : null;
+    if (this.harbor) toast(dialogFor('harbor_intro').lines[0], 4200);
 
     const cam = this.cameras.main;
     cam.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
     cam.startFollow(this.player, true, 0.15, 0.15);
     cam.setRoundPixels(true);
     cam.fadeIn(300, 0, 0, 0);
-    if (this.boardOnStart) this.board(true);
+    // start at the helm (back from a statue by ship, or in the harbour): board after the camera setup above, so the
+    // camera follows the ship rather than the hidden player
+    if (this.boardOnStart || this.harbor) this.board(true);
     if (prop(this.raw, 'dark', false)) {
       this.vignette = this.add
         .image(0, 0, 'vignette')
@@ -178,28 +285,135 @@ export class MapScene extends Phaser.Scene {
 
     this.debugGfx = this.add.graphics().setDepth(10000).setVisible(false);
     this.setupInput();
-    // Story beats are data/events for the teammate's scene UI, never a replacement homepage.
-    if (this.scene.key === 'circe') {
-      publishVoyageEvent(this, { type: 'enter_grotto' });
-      // A chest recovered before boarding must not soft-lock a later voyage.
-      if (
-        ((this.registry.get('openedChests') as string[] | undefined) ?? []).includes('chest_circe')
-      ) {
-        publishVoyageEvent(this, { type: 'recover_moly' });
-      }
-    }
     showDialog(null);
     updateHud(this.stats);
     this.events.on('battle-end', this.onBattleEnd, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () =>
       this.events.off('battle-end', this.onBattleEnd, this),
     );
-    // The shared popup consumes story events only after normal dialogue and transitions finish.
+    this.watchChallenge();
+    // Preserve scene-owned cinematics and victory timers; narration takes over only after they finish.
     installVoyagePlayback(
       this,
       () =>
-        !!this.dialog || this.inBattle || this.leaving || this.cameras.main.fadeEffect.isRunning,
+        !!this.dialog ||
+        this.inBattle ||
+        this.leaving ||
+        this.cutscene ||
+        this.cameras.main.fadeEffect.isRunning,
     );
+    if (['circe', 'cyclops', 'telepylus'].includes(this.scene.key)) {
+      const island = this.scene.key as ChallengeId;
+      publishVoyageEvent(this, { type: 'enter_challenge', island });
+      if (((this.registry.get('challengesWon') as string[] | undefined) ?? []).includes(island)) {
+        publishVoyageEvent(this, { type: 'challenge_won', island });
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------- challenge won: back to the ship
+  /** In a CHALLENGES dungeon whose boss still stands, wait for it to be added to the registry's `defeated` list. */
+  private watchChallenge() {
+    const ch = CHALLENGES[this.scene.key];
+    const bossKey = ch && `${this.scene.key}:${ch.boss}`;
+    const defeated = () => (this.registry.get('defeated') as string[] | undefined) ?? [];
+    if (!ch || defeated().includes(bossKey)) return;
+    // 'setdata' fires the first time `defeated` is set, 'changedata' every time after
+    const onData = (_parent: unknown, key: string) => {
+      if (key !== 'defeated' || !defeated().includes(bossKey)) return;
+      stop();
+      this.challengeWon(ch);
+    };
+    const stop = () => {
+      this.registry.events.off('setdata', onData);
+      this.registry.events.off('changedata', onData);
+    };
+    this.registry.events.on('setdata', onData);
+    this.registry.events.on('changedata', onData);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, stop);
+  }
+
+  /** Let the victory play out, hand over the hoard, show the VICTORY banner, then sail back to the ship by itself. */
+  private challengeWon(ch: { name: string; chest: string; delay: number }) {
+    this.cutscene = true;
+    this.player.frozen = true;
+    this.player.move(0, 0);
+    this.time.delayedCall(ch.delay, () => {
+      if (this.leaving) return;
+      const hoard = this.openChest(ch.chest);
+      // the hoard's text, then its reward line (openChest appends it last)
+      const rewards = hoard ? hoard.lines : [];
+      this.celebrate(ch.name, rewards, () => this.returnToShip());
+    });
+  }
+
+  /**
+   * Every challenge ends here: a golden flash, the VICTORY banner (challenge name + rewards) for VICTORY_MS, then
+   * `then` takes you back to the island. No input while it shows.
+   */
+  private celebrate(name: string, rewards: string[], then: () => void) {
+    if (this.leaving) return;
+    this.cutscene = true;
+    this.player.frozen = true;
+    this.player.move(0, 0);
+    if (this.dialog) {
+      this.dialog = null;
+      this.renderDialog();
+    }
+    const won = (this.registry.get('challengesWon') as string[] | undefined) ?? [];
+    const first = !won.includes(this.scene.key);
+    this.registry.set('challengesWon', [...won, ...(first ? [this.scene.key] : [])]);
+    const lines = [...rewards];
+    const st = this.stats;
+    const prize = PRIZES[this.scene.key];
+    if (first && prize === 'wine') {
+      st.maxHp += WINE_HP;
+      lines.push(`Prize: Maron's wine! Max HP +${WINE_HP} (now ${st.maxHp})`);
+    } else if (first && prize === 'skin') {
+      const skin = PLAYER_SKINS.find((k) => k.unlock === this.scene.key);
+      if (skin) {
+        this.player.setSheet(skin.key);
+        this.registry.set('playerSkin', skin.key);
+        lines.push(`Prize: the ${skin.name} skin! You're wearing it now (C to switch)`);
+      }
+    } else if (first && prize === 'ship') {
+      this.registry.set(
+        'shipLevel',
+        Math.max(1, (this.registry.get('shipLevel') as number | undefined) ?? 0),
+      );
+      lines.push(
+        'Prize: your ship is rebuilt with a bronze hull and a crimson sail: faster, and boulders do half damage',
+      );
+    }
+    // every win: back to full health
+    st.hp = st.maxHp;
+    this.registry.set('stats', st);
+    updateHud(st);
+    if (!lines.some((l) => /HP fully restored/.test(l))) lines.push('HP fully restored');
+    // The gameplay code above owns rewards. Story records the confirmed outcome without paying twice.
+    if (['circe', 'cyclops', 'telepylus'].includes(this.scene.key)) {
+      publishVoyageEvent(this, { type: 'challenge_won', island: this.scene.key as ChallengeId });
+    }
+    this.cameras.main.flash(500, 255, 224, 140);
+    showVictory(name, lines, VICTORY_MS);
+    this.time.delayedCall(VICTORY_MS, () => {
+      hideVictory();
+      then();
+    });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, hideVictory);
+  }
+
+  /** Leave the dungeon for the map it was entered from, starting at the ship's helm. */
+  private returnToShip() {
+    this.leaving = true;
+    this.player.frozen = true;
+    const target = this.portals.find((p) => p.kind === 'exit')?.target || 'village';
+    const from = (this.registry.get('lastHouse') as string | undefined) ?? '';
+    this.registry.set('statueBy', 'ship'); // arriving back "through" the statue with this set boards the ship
+    this.cameras.main.fadeOut(700, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      this.scene.start(target, { from } as MapSceneData);
+    });
   }
 
   private get stats(): PlayerStats {
@@ -312,6 +526,7 @@ export class MapScene extends Phaser.Scene {
         const water = this.layer('Collision').filter((r) => r.type === 'water');
         const b = this.physics.world.bounds;
         const keep = saved && !fromVoyage;
+        const upgraded = ((this.registry.get('shipLevel') as number | undefined) ?? 0) > 0;
         this.ship = new Ship(
           this,
           keep ? saved.x : s.x,
@@ -319,7 +534,9 @@ export class MapScene extends Phaser.Scene {
           water,
           b.width,
           b.height,
+          upgraded ? 'ship_bronze' : 'ship',
         );
+        if (upgraded) this.ship.maxSpeed *= 1.25; // the bronze hull (prize for escaping Telepylus)
         if (keep) this.ship.facingLeft = saved.left;
         // talkRect is the strip of shore you board from, kept relative to the mooring so it moves with the ship
         const r = prop(s, 'talkRect', '').split(',').map(Number);
@@ -345,8 +562,43 @@ export class MapScene extends Phaser.Scene {
           .sprite(s.x, s.y, key)
           .setOrigin(0.5, 1)
           .setDepth(s.y - fh / 2);
-        if (this.anims.exists(`${key}-idle`)) statue.play(`${key}-idle`);
-        if (prop(s, 'aura', false)) this.addAura(statue);
+        // `lure`: a sprite (the treasure chest, the amphora) stands at `lureAt` (default: on the statue's spot) until
+        // used; `awaken` says what using it does: 'rise' (default, the statue rises: awaken()), 'pour' (pourWine()),
+        // 'hurl' (no lure: a statue hurls the boulder it holds the first time: hurlBoulder()), or 'sing' (no lure:
+        // Homer plays his lyre the first time: singTale())
+        const lure = prop(s, 'lure', '');
+        const awakenProp = prop<string>(s, 'awaken', 'rise');
+        const style: StatueSpot['style'] =
+          awakenProp === 'pour' || awakenProp === 'hurl' || awakenProp === 'sing'
+            ? awakenProp
+            : 'rise';
+        const asleep =
+          (!!lure || style === 'hurl' || style === 'sing') &&
+          !((this.registry.get('awakened') as string[] | undefined) ?? []).includes(s.name);
+        const la = prop(s, 'lureAt', '').split(',').map(Number);
+        const [lx, ly] = la.length === 2 ? la : [s.x, s.y];
+        const chest =
+          asleep && lure
+            ? this.add
+                .sprite(lx, ly, lure, 0)
+                .setOrigin(0.5, 1)
+                .setDepth(ly - 2)
+            : null;
+        if ((style === 'hurl' || style === 'sing') && !asleep) statue.setFrame(1); // boulder thrown / lyre turned gold
+        // `aura`: true = black smoke, or the name of an AURAS palette ('wine')
+        const auraProp = prop<boolean | string>(s, 'aura', false);
+        const aura: AuraStyle | null =
+          auraProp === true
+            ? 'black'
+            : typeof auraProp === 'string' && auraProp in AURAS
+              ? (auraProp as AuraStyle)
+              : null;
+        if (asleep) {
+          if (style === 'rise') statue.setVisible(false); // a 'pour' statue is already there, dormant (frame 0)
+        } else {
+          if (this.anims.exists(`${key}-idle`)) statue.play(`${key}-idle`);
+          if (aura) this.addAura(statue, false, aura);
+        }
         this.walls.add(this.add.zone(s.x, s.y - 1 - fh / 2, fw, fh));
         const dialog = prop(s, 'dialog', '');
         const target = prop(s, 'target', '');
@@ -363,9 +615,16 @@ export class MapScene extends Phaser.Scene {
               a.length === 2 ? a[0] : s.x,
               a.length === 2 ? a[1] : s.y + 10,
             ),
+            sprite: statue,
+            aura,
+            chest,
+            style,
+            asleep,
           });
         } else if (dialog) {
-          this.interactables.push({ kind: 'sign', rect, dialog, id: s.name });
+          const it: Interactable = { kind: 'sign', rect, dialog, id: s.name };
+          this.interactables.push(it);
+          this.readableStatues.push({ it, x: s.x, y: s.y });
         }
       } else if (s.type === 'sign' || s.type === 'chest') {
         this.interactables.push({ kind: s.type, rect, dialog: prop(s, 'dialog', ''), id: s.name });
@@ -388,8 +647,8 @@ export class MapScene extends Phaser.Scene {
     // arriving back through a door: stand just outside it, facing away from the house
     const via = this.portals.find((p) => p.kind === 'door' && p.id === this.arrival.from);
     // a skin chosen with C carries over between maps
-    const sprite =
-      (this.registry.get('playerSkin') as string | undefined) ?? start?.sprite ?? 'adam';
+    // the player is Odysseus (PLAYER_SKINS[0]) unless another skin was picked with C
+    const sprite = (this.registry.get('playerSkin') as string | undefined) ?? PLAYER_SKINS[0].key;
     if (via) start = { x: via.rect.centerX, y: via.rect.bottom + 6, sprite, face: 'down' };
     // sailing home: step off onto the shore, looking at the ship
     const landing = this.arrival.from ? this.shipLandings[this.arrival.from] : undefined;
@@ -442,8 +701,7 @@ export class MapScene extends Phaser.Scene {
       const defeated = (this.registry.get('defeated') as string[] | undefined) ?? [];
       this.registry.set('defeated', [...defeated, `${this.scene.key}:${enemy.spawnName}`]);
       this.enemies = this.enemies.filter((e) => e !== enemy);
-      // Only a confirmed victory produces a story battle event; losses and escape cannot advance it.
-      if (this.scene.key === 'circe')
+      if (this.scene.key === 'circe' && !this.cutscene)
         publishVoyageEvent(this, { type: 'victory', enemy: enemy.spawnName });
       enemy.destroy();
       if (enemy.def.boss) toast(`${enemy.def.name} defeated! The treasure is yours.`, 2600);
@@ -451,6 +709,11 @@ export class MapScene extends Phaser.Scene {
       enemy.stunnedUntil = this.time.now + 2500;
       this.safeUntil = this.time.now + 1500;
     } else if (result === 'lose') {
+      if (['circe', 'cyclops'].includes(this.scene.key))
+        publishVoyageEvent(this, {
+          type: 'challenge_failed',
+          island: this.scene.key as ChallengeId,
+        });
       // wake up outside the house you entered
       this.leaving = true;
       toast('You wake up outside, fully healed.', 2600);
@@ -476,6 +739,7 @@ export class MapScene extends Phaser.Scene {
       ['keydown-ENTER', () => this.interact()],
       ['keydown-M', () => this.toggleOverview()],
       ['keydown-C', () => this.cycleSkin()],
+      ['keydown-F', () => this.shoot()],
       [
         'keydown-F1',
         () => {
@@ -503,13 +767,41 @@ export class MapScene extends Phaser.Scene {
       for (const [ev, fn] of handlers) kb.off(ev, fn);
     });
     setActionHandler(() => this.interact());
+    setShootHandler(() => this.shoot());
   }
 
-  /** Cycle the player through PLAYER_SKINS (Adam and the Greek gods). */
+  /** F (or the bow button): shoot an arrow, once Odysseus has found his bow. */
+  private shoot() {
+    if (
+      voyagePlaybackBlocks(this) ||
+      this.dialog ||
+      this.leaving ||
+      this.cutscene ||
+      this.sailing ||
+      this.inBattle
+    )
+      return;
+    this.archery?.shoot(this.time.now);
+  }
+
+  /** Open a dialog by key (used by Archery for the bow). */
+  private say(key: string) {
+    // Archery emits bow_found only after the actual bow item has been collected.
+    if (key === 'bow_found' && this.scene.key === 'cyclops')
+      publishVoyageEvent(this, { type: 'bow_found' });
+    this.dialog = { entry: dialogFor(key), line: 0 };
+    this.player.frozen = true;
+    this.player.move(0, 0);
+    this.renderDialog();
+  }
+
+  /** Cycle the player through PLAYER_SKINS (Odysseus, Adam, the Greek gods, and prize skins once won). */
   private cycleSkin() {
     if (this.dialog || this.leaving) return;
-    const i = PLAYER_SKINS.findIndex((s) => s.key === this.player.sheet);
-    const next = PLAYER_SKINS[(i + 1) % PLAYER_SKINS.length];
+    const won = (this.registry.get('challengesWon') as string[] | undefined) ?? [];
+    const open = PLAYER_SKINS.filter((s) => !s.unlock || won.includes(s.unlock));
+    const i = open.findIndex((s) => s.key === this.player.sheet);
+    const next = open[(i + 1) % open.length];
     this.player.setSheet(next.key);
     this.registry.set('playerSkin', next.key);
     toast(next.name);
@@ -532,11 +824,30 @@ export class MapScene extends Phaser.Scene {
 
   private interact() {
     if (voyagePlaybackBlocks(this) && !this.dialog) return;
-    if (this.leaving) return;
+    if (this.leaving || this.cutscene) return;
     if (this.dialog) return this.advanceDialog();
     if (this.sailing) {
+      if (this.harbor)
+        return toast(
+          'No landing here: the giants would crush you. Sail for the harbour mouth!',
+          2200,
+        );
       const st = this.statueInReach();
-      return st ? this.openStatue(st, true) : this.goAshore();
+      if (st) return this.openStatue(st, true);
+      // statues with only a plaque (e.g. the Cyclops head on its tiny islet) can be read from the deck
+      const r = this.statueInReach(this.readableStatues);
+      if (r) {
+        this.dialog = {
+          entry: dialogFor(r.dialog),
+          line: 0,
+          target: r,
+          onClose: () => {
+            this.player.frozen = true;
+          },
+        };
+        return this.renderDialog();
+      }
+      return this.goAshore();
     }
     const p = this.player.probe;
     let best: Interactable | null = null;
@@ -573,36 +884,40 @@ export class MapScene extends Phaser.Scene {
       best.npc.faceTowards(this.player.x, this.player.y);
     }
     let entry = dialogFor(best.dialog);
-    if (best.kind === 'chest') {
-      const opened = (this.registry.get('openedChests') as string[] | undefined) ?? [];
-      if (opened.includes(best.id)) entry = { name: entry.name, lines: ['It is empty.'] };
-      else {
-        this.registry.set('openedChests', [...opened, best.id]);
-        // Moly is a story flag; the existing chest reward code remains the inventory authority.
-        if (this.scene.key === 'circe' && best.dialog === 'chest_circe')
-          publishVoyageEvent(this, { type: 'recover_moly' });
-        const reward = CHEST_REWARDS[best.id];
-        if (reward) {
-          const st = this.stats;
-          st.potions += reward.potions ?? 0;
-          if (reward.heal) st.hp = st.maxHp;
-          this.registry.set('stats', st);
-          updateHud(st);
-          entry = {
-            name: entry.name,
-            lines: [
-              ...entry.lines,
-              `+${reward.potions ?? 0} potions${reward.heal ? ', HP fully restored' : ''}.`,
-            ],
-          };
-        }
-      }
-    }
+    if (best.kind === 'chest')
+      entry = this.openChest(best.id, best.dialog) ?? { name: entry.name, lines: ['It is empty.'] };
     if (best.kind === 'ship') return this.board();
     if (best.kind === 'statue') return this.openStatue(best, false);
     this.dialog = { entry, line: 0, target: best };
     this.player.frozen = true;
     this.renderDialog();
+  }
+
+  /**
+   * Open a chest for the first time: mark it opened, apply its CHEST_REWARDS, and return its dialog with the reward
+   * line added. Returns null if it was already opened.
+   */
+  private openChest(id: string, dialog = id): DialogEntry | null {
+    const opened = (this.registry.get('openedChests') as string[] | undefined) ?? [];
+    if (opened.includes(id)) return null;
+    this.registry.set('openedChests', [...opened, id]);
+    if (this.scene.key === 'circe' && id === 'chest_circe')
+      publishVoyageEvent(this, { type: 'recover_moly' });
+    const entry = dialogFor(dialog);
+    const reward = CHEST_REWARDS[id];
+    if (!reward) return entry;
+    const st = this.stats;
+    st.potions += reward.potions ?? 0;
+    if (reward.heal) st.hp = st.maxHp;
+    this.registry.set('stats', st);
+    updateHud(st);
+    return {
+      name: entry.name,
+      lines: [
+        ...entry.lines,
+        `+${reward.potions ?? 0} potions${reward.heal ? ', HP fully restored' : ''}.`,
+      ],
+    };
   }
 
   // ---------------------------------------------------------------- the ship
@@ -615,8 +930,7 @@ export class MapScene extends Phaser.Scene {
     this.player.setVisible(false);
     (this.player.body as Phaser.Physics.Arcade.Body).enable = false;
     if (!this.overview) this.cameras.main.startFollow(this.ship.sprite, true, 0.08, 0.08);
-    // Boarding is the story's start trigger; quiet reboarding also completes a rescued-crew return.
-    publishVoyageEvent(this, { type: 'board' });
+    if (this.scene.key === 'village') publishVoyageEvent(this, { type: 'board' });
     if (!quiet) toast(dialogFor('ship_board').lines[0], 3200);
   }
 
@@ -636,24 +950,31 @@ export class MapScene extends Phaser.Scene {
 
   // ---------------------------------------------------------------- statues with a dungeon (Circe's)
   /** A statue close enough to the ship's hull to step onto from the deck. */
-  private statueInReach() {
+  private statueInReach(list: { it: Interactable; x: number; y: number }[] = this.statues) {
     if (!this.ship) return null;
     const h = this.ship.hull;
-    return (
-      this.statues.find(
-        (st) =>
-          Phaser.Math.Distance.Between(
-            st.x,
-            st.y - 8,
-            Phaser.Math.Clamp(st.x, h.x, h.right),
-            Phaser.Math.Clamp(st.y - 8, h.y, h.bottom),
-          ) <= 30,
-      )?.it ?? null
-    );
+    // the nearest one within 30px of the hull (two statues can both be in reach of a 72px-wide galley)
+    const d = (st: { x: number; y: number }) =>
+      Phaser.Math.Distance.Between(
+        st.x,
+        st.y - 8,
+        Phaser.Math.Clamp(st.x, h.x, h.right),
+        Phaser.Math.Clamp(st.y - 8, h.y, h.bottom),
+      );
+    let best: { it: Interactable; x: number; y: number } | null = null;
+    for (const st of list) if (d(st) <= 30 && (!best || d(st) < d(best))) best = st;
+    return best?.it ?? null;
   }
 
-  /** Read the statue's lines; closing them takes you into its dungeon. */
+  /** Read the statue's lines; closing them takes you into its dungeon. While the lure stands there, open it instead. */
   private openStatue(it: Interactable, byShip: boolean) {
+    const spot = this.statues.find((st) => st.it === it);
+    if (spot?.asleep) {
+      if (spot.style === 'pour') return this.pourWine(spot);
+      if (spot.style === 'hurl') return this.hurlBoulder(spot);
+      if (spot.style === 'sing') return this.singTale(spot);
+      return this.awaken(spot);
+    }
     this.dialog = {
       entry: dialogFor(it.dialog),
       line: 0,
@@ -667,9 +988,6 @@ export class MapScene extends Phaser.Scene {
   private enterStatue(it: Interactable, byShip: boolean) {
     if (!it.target || !this.scene.get(it.target))
       return toast('The black smoke thins. The way is sealed.', 2200);
-    // Arriving by ship identifies this destination as the first island, without changing its UI.
-    if (byShip && it.target === 'circe')
-      publishVoyageEvent(this, { type: 'landfall', island: 'aeaea' });
     this.leaving = true;
     this.player.frozen = true;
     this.registry.set('lastHouse', it.id); // exits in the dungeon come back "through" the statue
@@ -682,71 +1000,589 @@ export class MapScene extends Phaser.Scene {
   }
 
   /**
+   * The chest was bait. About 3 seconds:
+   *   1. the lid flies open and gold coins fountain out (+50 gold)
+   *   2. the chest rattles while black smoke spirals in from all around
+   *   3. it collapses into a puff of black smoke: violet flash, screen shake, the spilled coins blacken and vanish
+   *   4. the statue grinds up out of the ground, top first, kicking up dust, with a low rumble
+   *   5. its eyes flare, the black aura swells in, and Circe speaks
+   */
+  private awaken(st: StatueSpot) {
+    const chest = st.chest!;
+    st.chest = null;
+    st.asleep = false;
+    this.cutscene = true;
+    this.player.frozen = true;
+    this.registry.set('awakened', [
+      ...((this.registry.get('awakened') as string[] | undefined) ?? []),
+      st.it.id,
+    ]);
+    const stats = this.stats;
+    stats.gold = (stats.gold ?? 0) + 50;
+    this.registry.set('stats', stats);
+    updateHud(stats);
+    this.ensureFxTextures();
+    const { x, y } = st;
+    const depth = chest.depth;
+    const at = (ms: number, fn: () => void) => this.time.delayedCall(ms, fn);
+
+    // 1. the bait
+    chest.setFrame(1);
+    toast('+50 gold!', 1800);
+    const coins: Phaser.GameObjects.Image[] = [];
+    for (let i = 0; i < 16; i++) {
+      const c = this.add
+        .image(x + Phaser.Math.Between(-3, 3), y - 9, 'fx_coin')
+        .setDepth(depth + 1);
+      coins.push(c);
+      const tx = x + Phaser.Math.Between(-24, 24),
+        peak = y - Phaser.Math.Between(18, 34),
+        land = y + Phaser.Math.Between(-4, 3);
+      this.tweens.add({ targets: c, x: tx, duration: 650, delay: i * 18 });
+      this.tweens.add({
+        targets: c,
+        y: peak,
+        duration: 280,
+        delay: i * 18,
+        ease: 'Quad.out',
+        onComplete: () =>
+          this.tweens.add({ targets: c, y: land, duration: 370, ease: 'Bounce.out' }),
+      });
+    }
+    // 2. the trap: rattle + black smoke spiralling in
+    at(650, () => {
+      this.tweens.add({ targets: chest, x: x + 1, duration: 45, yoyo: true, repeat: 8 });
+      for (let i = 0; i < 26; i++) {
+        const a = (i / 26) * Math.PI * 2,
+          r = Phaser.Math.Between(34, 48);
+        const w = this.add
+          .image(
+            x + Math.cos(a) * r,
+            y - 8 + Math.sin(a) * r * 0.6,
+            i % 3 ? 'aura_wisp_black' : 'aura_wisp_violet',
+          )
+          .setDepth(depth + 2)
+          .setScale(2)
+          .setAlpha(0);
+        this.tweens.add({
+          targets: w,
+          x: x + Math.cos(a + 1.4) * 3,
+          y: y - 8 + Math.sin(a + 1.4) * 2,
+          alpha: { from: 0.95, to: 0.6 },
+          scale: 1,
+          duration: 650,
+          delay: i * 12,
+          ease: 'Sine.in',
+          onComplete: () => w.destroy(),
+        });
+      }
+    });
+    // 3. the curse
+    at(1400, () => {
+      this.tweens.add({
+        targets: chest,
+        alpha: 0,
+        scaleY: 0.2,
+        duration: 140,
+        onComplete: () => chest.destroy(),
+      });
+      for (let i = 0; i < 9; i++) {
+        const p = this.add
+          .circle(
+            x + Phaser.Math.Between(-6, 6),
+            y - Phaser.Math.Between(4, 14),
+            Phaser.Math.Between(3, 6),
+            i % 3 ? 0x000000 : 0x2a0f3d,
+            0.9,
+          )
+          .setDepth(depth + 3);
+        this.tweens.add({
+          targets: p,
+          scale: 2.6,
+          alpha: 0,
+          y: p.y - Phaser.Math.Between(6, 16),
+          duration: Phaser.Math.Between(500, 800),
+          onComplete: () => p.destroy(),
+        });
+      }
+      this.cameras.main.flash(260, 90, 30, 140);
+      this.cameras.main.shake(220, 0.006);
+      for (const c of coins) {
+        c.setTexture('fx_coin_dark');
+        this.tweens.add({
+          targets: c,
+          alpha: 0,
+          duration: 500,
+          delay: Phaser.Math.Between(0, 250),
+          onComplete: () => c.destroy(),
+        });
+      }
+    });
+    // 4. she rises: reveal the statue top-first while sliding it up out of the ground
+    at(1700, () => {
+      const s = st.sprite,
+        fh = s.height;
+      s.setVisible(true)
+        .setFrame(0)
+        .setCrop(0, 0, s.width, 0)
+        .setY(y + fh);
+      this.cameras.main.shake(1000, 0.002);
+      const dust = this.time.addEvent({
+        delay: 70,
+        repeat: 13,
+        callback: () => {
+          const d = this.add
+            .rectangle(
+              x + Phaser.Math.Between(-8, 8),
+              y - 1,
+              2,
+              2,
+              Phaser.Math.RND.pick([0xb89a6a, 0x8c7354, 0xd8c49a]),
+            )
+            .setDepth(depth + 1);
+          this.tweens.add({
+            targets: d,
+            x: d.x + Phaser.Math.Between(-10, 10),
+            y: d.y - Phaser.Math.Between(3, 8),
+            alpha: 0,
+            duration: 450,
+            onComplete: () => d.destroy(),
+          });
+        },
+      });
+      this.tweens.addCounter({
+        from: 0,
+        to: fh,
+        duration: 1100,
+        ease: 'Sine.out',
+        onUpdate: (tw) => {
+          const h = Math.round(tw.getValue() ?? 0);
+          s.setCrop(0, 0, s.width, h).setY(y + fh - h);
+        },
+        onComplete: () => {
+          s.setCrop().setY(y);
+          dust.remove();
+        },
+      });
+    });
+    // 5. eyes flare, aura swells in, Circe speaks
+    at(2900, () => {
+      const s = st.sprite;
+      s.setFrame(1);
+      if (this.anims.exists(`${s.texture.key}-idle`))
+        this.time.delayedCall(250, () => s.play(`${s.texture.key}-idle`));
+      if (st.aura) this.addAura(s, true, st.aura);
+      this.cameras.main.flash(150, 60, 10, 90);
+    });
+    at(3500, () => {
+      this.cutscene = false;
+      this.dialog = { entry: dialogFor('circe_awaken'), line: 0, target: st.it };
+      this.renderDialog();
+    });
+  }
+
+  /**
+   * Odysseus' trick on Polyphemus: the amphora of Maron's wine poured into the stone mouth. About 3 seconds:
+   *   1. the amphora tips toward the head and a stream of wine arcs into its mouth
+   *   2. the empty jar topples and fades; the head shudders, the ground rumbles, a wine-red flash
+   *   3. the jaw grinds open (frame 1), the eye blazes, red and violet sparks burst from the mouth
+   *   4. the eye settles into its pulse, the wine-red aura swells in, and the Cyclops speaks
+   * Uses the head's frames: 0 dormant, 1-2 awake (jaw open, eye blazing / glowing), idle anim `<key>-idle` = 1,2.
+   */
+  private pourWine(st: StatueSpot) {
+    const jar = st.chest!;
+    st.chest = null;
+    st.asleep = false;
+    this.cutscene = true;
+    this.player.frozen = true;
+    this.registry.set('awakened', [
+      ...((this.registry.get('awakened') as string[] | undefined) ?? []),
+      st.it.id,
+    ]);
+    this.ensureFxTextures();
+    const s = st.sprite;
+    const mouth = { x: st.x, y: st.y - 13 }; // the mouth on the 32x34 head, from its bottom centre
+    const dir = jar.x > st.x ? -1 : 1; // tip toward the head
+    const lip = () => ({ x: jar.x + dir * 6, y: jar.y - 15 });
+    const at = (ms: number, fn: () => void) => this.time.delayedCall(ms, fn);
+
+    // 1. tip and pour
+    this.tweens.add({
+      targets: jar,
+      angle: dir * 75,
+      y: jar.y - 3,
+      duration: 420,
+      ease: 'Sine.inOut',
+    });
+    at(420, () => {
+      for (let i = 0; i < 22; i++) {
+        at(i * 35, () => {
+          const p = lip();
+          const d = this.add
+            .image(p.x, p.y, i % 4 ? 'fx_wine' : 'fx_wine_hi')
+            .setDepth(s.depth + 1);
+          const peak = Math.min(p.y, mouth.y) - Phaser.Math.Between(6, 10);
+          this.tweens.add({
+            targets: d,
+            x: mouth.x + Phaser.Math.Between(-2, 2),
+            duration: 380,
+            ease: 'Linear',
+          });
+          this.tweens.add({
+            targets: d,
+            y: peak,
+            duration: 170,
+            ease: 'Quad.out',
+            onComplete: () =>
+              this.tweens.add({
+                targets: d,
+                y: mouth.y + Phaser.Math.Between(-1, 1),
+                duration: 210,
+                ease: 'Quad.in',
+                onComplete: () => d.destroy(),
+              }),
+          });
+        });
+      }
+    });
+    // 2. the jar is empty: it topples and fades; the head shudders
+    at(1350, () => {
+      this.tweens.add({
+        targets: jar,
+        angle: dir * 100,
+        alpha: 0,
+        y: jar.y + 2,
+        duration: 450,
+        onComplete: () => jar.destroy(),
+      });
+      this.tweens.add({
+        targets: s,
+        x: st.x + 1,
+        duration: 50,
+        yoyo: true,
+        repeat: 7,
+        onComplete: () => s.setX(st.x),
+      });
+      this.cameras.main.shake(700, 0.004);
+      this.cameras.main.flash(240, 120, 10, 40);
+    });
+    // 3. the jaw opens, the eye blazes
+    at(1900, () => {
+      s.setFrame(1);
+      for (let i = 0; i < 14; i++) {
+        const a = Phaser.Math.FloatBetween(Math.PI * 1.1, Math.PI * 1.9); // upwards fan from the mouth
+        const p = this.add
+          .image(mouth.x, mouth.y, i % 3 ? 'aura_wisp_wine' : 'aura_wisp_purple')
+          .setDepth(s.depth + 2)
+          .setScale(1.5);
+        const r = Phaser.Math.Between(10, 22);
+        this.tweens.add({
+          targets: p,
+          x: mouth.x + Math.cos(a) * r,
+          y: mouth.y + Math.sin(a) * r,
+          alpha: 0,
+          scale: 0.5,
+          duration: Phaser.Math.Between(450, 750),
+          ease: 'Quad.out',
+          onComplete: () => p.destroy(),
+        });
+      }
+      this.cameras.main.flash(160, 160, 30, 30);
+    });
+    // 4. it breathes: eye pulse + aura
+    at(2400, () => {
+      if (this.anims.exists(`${s.texture.key}-idle`)) s.play(`${s.texture.key}-idle`);
+      if (st.aura) this.addAura(s, true, st.aura);
+    });
+    at(3000, () => {
+      this.cutscene = false;
+      this.dialog = { entry: dialogFor(`${st.it.id}_awaken`), line: 0, target: st.it };
+      this.renderDialog();
+    });
+  }
+
+  /**
+   * Homer begins the tale: his stone lyre turns to gold, a golden glow pulses and music notes (the battle fx sheet's
+   * note frame) rise from the strings and drift out over the sea toward the tale's harbour. ~2.4 s.
+   */
+  private singTale(st: StatueSpot) {
+    st.asleep = false;
+    this.cutscene = true;
+    this.player.frozen = true;
+    this.registry.set('awakened', [
+      ...((this.registry.get('awakened') as string[] | undefined) ?? []),
+      st.it.id,
+    ]);
+    const s = st.sprite;
+    const lyre = { x: st.x + 7, y: st.y - s.height + 16 }; // the lyre on the statue's left arm
+    s.setFrame(1);
+    this.cameras.main.flash(260, 255, 226, 140);
+    const glow = this.add.circle(lyre.x, lyre.y, 10, 0xffe08a, 0.35).setDepth(s.depth + 1);
+    this.tweens.add({
+      targets: glow,
+      scale: 1.8,
+      alpha: 0,
+      duration: 900,
+      repeat: 1,
+      onComplete: () => glow.destroy(),
+    });
+    for (let i = 0; i < 9; i++) {
+      this.time.delayedCall(i * 190, () => {
+        const n = this.add
+          .image(lyre.x, lyre.y, 'gk_fx', FX_FRAME.note)
+          .setScale(0.35)
+          .setDepth(10000)
+          .setAlpha(0);
+        const tx = lyre.x + Phaser.Math.Between(30, 90),
+          ty = lyre.y - Phaser.Math.Between(20, 60);
+        this.tweens.add({
+          targets: n,
+          alpha: { from: 1, to: 0 },
+          x: tx,
+          duration: 1300,
+          ease: 'Sine.out',
+          onComplete: () => n.destroy(),
+        });
+        this.tweens.add({ targets: n, y: ty, duration: 1300, ease: 'Sine.inOut' });
+        this.tweens.add({
+          targets: n,
+          angle: { from: -15, to: 15 },
+          duration: 320,
+          yoyo: true,
+          repeat: 2,
+        });
+      });
+    }
+    this.time.delayedCall(2400, () => {
+      this.cutscene = false;
+      this.dialog = { entry: dialogFor(`${st.it.id}_awaken`), line: 0, target: st.it };
+      this.renderDialog();
+    });
+  }
+
+  /**
+   * A Laestrygonian statue wakes: it trembles, the ground rumbles, and it hurls the boulder it holds over its
+   * head far out to sea (a long arc, a shadow racing ahead, a towering splash); its arms stay flung out (frame 1). ~2.6 s.
+   */
+  private hurlBoulder(st: StatueSpot) {
+    st.asleep = false;
+    this.cutscene = true;
+    this.player.frozen = true;
+    this.registry.set('awakened', [
+      ...((this.registry.get('awakened') as string[] | undefined) ?? []),
+      st.it.id,
+    ]);
+    const s = st.sprite;
+    const at = (ms: number, fn: () => void) => this.time.delayedCall(ms, fn);
+    this.tweens.add({
+      targets: s,
+      x: st.x + 1,
+      duration: 45,
+      yoyo: true,
+      repeat: 9,
+      onComplete: () => s.setX(st.x),
+    });
+    this.cameras.main.shake(700, 0.003);
+    at(650, () => {
+      s.setFrame(1);
+      const sx = st.x,
+        sy = st.y - s.height + 4; // the boulder was held at the top of the sprite
+      const tx = st.x + 150,
+        ty = Math.min(this.physics.world.bounds.height - 12, st.y - 40); // far out over the bay
+      const rock = this.add.image(sx, sy, 'rock').setScale(1.2).setDepth(10000);
+      const shadow = this.add.ellipse(sx, st.y - 2, 12, 4, 0x0a1830, 0.4).setDepth(-400);
+      this.tweens.addCounter({
+        from: 0,
+        to: 1,
+        duration: 1100,
+        onUpdate: (tw) => {
+          const t = tw.getValue() ?? 0;
+          rock
+            .setPosition(sx + (tx - sx) * t, sy + (ty - sy) * t - Math.sin(Math.PI * t) * 90)
+            .setAngle(t * 540)
+            .setScale(1.2 + Math.sin(Math.PI * t) * 0.8);
+          shadow.setPosition(sx + (tx - sx) * t, st.y - 2 + (ty - st.y + 2) * t);
+        },
+        onComplete: () => {
+          rock.destroy();
+          shadow.destroy();
+          const ring = this.add
+            .ellipse(tx, ty, 10, 4)
+            .setStrokeStyle(1, 0xffffff, 0.9)
+            .setDepth(-300);
+          this.tweens.add({
+            targets: ring,
+            scaleX: 4,
+            scaleY: 4,
+            alpha: 0,
+            duration: 700,
+            onComplete: () => ring.destroy(),
+          });
+          for (let i = 0; i < 20; i++) {
+            const d = this.add
+              .rectangle(tx + Phaser.Math.Between(-4, 4), ty, 2, 2, i % 3 ? 0xffffff : 0x9fd8ff)
+              .setDepth(ty + 1);
+            const a = Phaser.Math.FloatBetween(Math.PI * 1.15, Math.PI * 1.85),
+              v = Phaser.Math.Between(10, 30);
+            this.tweens.add({
+              targets: d,
+              x: tx + Math.cos(a) * v,
+              y: ty + Math.sin(a) * v,
+              alpha: 0,
+              duration: Phaser.Math.Between(400, 800),
+              ease: 'Quad.out',
+              onComplete: () => d.destroy(),
+            });
+          }
+          this.cameras.main.shake(250, 0.006);
+        },
+      });
+    });
+    at(2600, () => {
+      this.cutscene = false;
+      this.dialog = { entry: dialogFor(`${st.it.id}_awaken`), line: 0, target: st.it };
+      this.renderDialog();
+    });
+  }
+
+  /** Tiny textures for effects, drawn once (no tinting, so WebGL and Canvas look the same). */
+  private ensureFxTextures() {
+    const make = (
+      k: string,
+      w: number,
+      h: number,
+      draw: (ctx: CanvasRenderingContext2D) => void,
+    ) => {
+      if (this.textures.exists(k)) return;
+      const t = this.textures.createCanvas(k, w, h)!;
+      draw(t.getContext());
+      t.refresh();
+    };
+    const coin = (body: string, hi: string, lo: string) => (ctx: CanvasRenderingContext2D) => {
+      ctx.fillStyle = body;
+      ctx.fillRect(0, 1, 3, 1);
+      ctx.fillRect(1, 0, 1, 3);
+      ctx.fillStyle = hi;
+      ctx.fillRect(1, 0, 1, 1);
+      ctx.fillStyle = lo;
+      ctx.fillRect(1, 2, 1, 1);
+    };
+    make('fx_coin', 3, 3, coin('#f0c040', '#fff2a0', '#c08a20'));
+    make('fx_coin_dark', 3, 3, coin('#2a0f3d', '#5a2a7a', '#000000'));
+    make('aura_wisp_black', 2, 2, (ctx) => {
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, 2, 2);
+    });
+    make('aura_wisp_violet', 2, 2, (ctx) => {
+      ctx.fillStyle = '#2a0f3d';
+      ctx.fillRect(0, 0, 2, 2);
+    });
+    make('aura_wisp_wine', 2, 2, (ctx) => {
+      ctx.fillStyle = '#9a1236';
+      ctx.fillRect(0, 0, 2, 2);
+    });
+    make('aura_wisp_purple', 2, 2, (ctx) => {
+      ctx.fillStyle = '#6a2a9a';
+      ctx.fillRect(0, 0, 2, 2);
+    });
+    make('fx_wine', 2, 2, (ctx) => {
+      ctx.fillStyle = '#7a0c2c';
+      ctx.fillRect(0, 0, 2, 2);
+    });
+    make('fx_wine_hi', 2, 2, (ctx) => {
+      ctx.fillStyle = '#c0304e';
+      ctx.fillRect(0, 0, 2, 2);
+    });
+  }
+
+  /**
    * Black aura: a soft black glow hugging the statue's silhouette, a dark pool at its feet and black-violet wisps
    * rising around it. Textures are made here (no tinting), so it looks the same in WebGL and Canvas.
    */
-  private addAura(statue: Phaser.GameObjects.Sprite) {
+  private addAura(statue: Phaser.GameObjects.Sprite, fadeIn = false, style: AuraStyle = 'black') {
+    const pal = AURAS[style];
     const key = statue.texture.key;
-    const glowKey = `${key}__aura`;
+    const glowKey = `${key}__aura_${style}`;
     const pad = 10;
     const f = this.textures.getFrame(key, 0);
     if (!this.textures.exists(glowKey)) {
       const c = this.textures.createCanvas(glowKey, f.width + pad * 2, f.height + pad * 2)!;
       const ctx = c.getContext();
       const src = f.source.image as CanvasImageSource;
-      ctx.shadowColor = '#000';
+      ctx.shadowColor = pal.shadow;
       ctx.shadowBlur = 6;
       for (let i = 0; i < 4; i++)
         ctx.drawImage(src, f.cutX, f.cutY, f.width, f.height, pad, pad, f.width, f.height);
       ctx.globalCompositeOperation = 'source-in';
-      ctx.fillStyle = '#07020c';
+      ctx.fillStyle = pal.glow;
       ctx.fillRect(0, 0, c.width, c.height);
       c.refresh();
     }
-    for (const [k, color] of [
-      ['aura_wisp_black', '#000000'],
-      ['aura_wisp_violet', '#2a0f3d'],
-    ] as const) {
-      if (this.textures.exists(k)) continue;
-      const t = this.textures.createCanvas(k, 2, 2)!;
-      t.getContext().fillStyle = color;
-      t.getContext().fillRect(0, 0, 2, 2);
-      t.refresh();
-    }
-    const { x, y, depth } = statue;
-    const pool = this.add.ellipse(x, y - 1, 26, 7, 0x000000, 0.45).setDepth(-499);
+    this.ensureFxTextures();
+    const { depth } = statue;
+    const x = Math.round(statue.x),
+      y = statue.y;
+    const pool = this.add
+      .ellipse(x, y - 1, Math.max(26, f.width + 4), 7, pal.pool, fadeIn ? 0 : 0.45)
+      .setDepth(-499);
     const glow = this.add
       .image(x, y + pad, glowKey)
       .setOrigin(0.5, 1)
       .setDepth(depth - 0.01)
-      .setAlpha(0.75);
-    this.tweens.add({
-      targets: glow,
-      alpha: 0.95,
-      scaleX: 1.12,
-      scaleY: 1.06,
-      duration: 1300,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.inOut',
-    });
-    this.tweens.add({
-      targets: pool,
-      scaleX: 1.2,
-      alpha: 0.6,
-      duration: 1300,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.inOut',
-    });
+      .setAlpha(fadeIn ? 0 : 0.75);
+    const breathe = () => {
+      this.tweens.add({
+        targets: glow,
+        alpha: 0.95,
+        scaleX: 1.12,
+        scaleY: 1.06,
+        duration: 1300,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.inOut',
+      });
+      this.tweens.add({
+        targets: pool,
+        scaleX: 1.2,
+        alpha: 0.6,
+        duration: 1300,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.inOut',
+      });
+    };
+    if (fadeIn) {
+      // swell in: the glow overshoots, then settles into its breathing
+      this.tweens.add({
+        targets: glow,
+        alpha: 0.75,
+        scaleX: { from: 1.6, to: 1 },
+        scaleY: { from: 1.3, to: 1 },
+        duration: 600,
+        ease: 'Back.out',
+      });
+      this.tweens.add({
+        targets: pool,
+        alpha: 0.45,
+        scaleX: { from: 2, to: 1 },
+        duration: 600,
+        ease: 'Back.out',
+        onComplete: breathe,
+      });
+    } else {
+      breathe();
+    }
+    // wisps rise from around the whole statue (sized from its frame, so a wide head gets a wide plume)
+    const hw = Math.max(9, f.width / 2 - 3),
+      top = Math.max(28, f.height - 6);
     for (const [k, freq] of [
-      ['aura_wisp_black', 90],
-      ['aura_wisp_violet', 160],
+      [pal.wisps[0], 90],
+      [pal.wisps[1], 160],
     ] as const) {
       this.add
         .particles(x, y, k, {
-          x: { min: -9, max: 9 },
-          y: { min: -28, max: -2 },
+          x: { min: -hw, max: hw },
+          y: { min: -top, max: -2 },
           speedX: { min: -4, max: 4 },
           speedY: { min: -16, max: -6 },
           lifespan: { min: 900, max: 1700 },
@@ -781,16 +1617,6 @@ export class MapScene extends Phaser.Scene {
     );
     if (!this.overview) this.cameras.main.startFollow(this.player, true, 0.15, 0.15);
     this.saveShip();
-    // Landing beside Circe's island is distinct from stepping off at the starting harbor.
-    if (
-      this.statues.some(
-        (statue) =>
-          statue.it.target === 'circe' &&
-          Phaser.Math.Distance.Between(spot.x, spot.y, statue.x, statue.y) < 60,
-      )
-    ) {
-      publishVoyageEvent(this, { type: 'landfall', island: 'aeaea' });
-    }
   }
 
   /** Nearest point within reach of the hull where the player's feet fit on open ground. */
@@ -833,6 +1659,7 @@ export class MapScene extends Phaser.Scene {
 
   /** Sailing off the south edge of the map is the voyage to the dragon's lair, once Achilles is beaten. */
   private openSea() {
+    if (this.harbor) return this.harbor.escape();
     const it = this.shipIt;
     if (!it || this.leaving) return;
     const unlocks = (this.registry.get('unlocks') as string[] | undefined) ?? [];
@@ -844,6 +1671,29 @@ export class MapScene extends Phaser.Scene {
     if (this.time.now < this.edgeToastAt) return;
     this.edgeToastAt = this.time.now + 3500;
     toast(dialogFor(unlocked ? 'ship_voyage_soon' : 'ship_voyage_locked').lines[0], 3200);
+  }
+
+  /** Leave the Laestrygonian harbour: back beside the giant's fist. Wrecked: you wash up on the islet, healed. */
+  private leaveHarbor(escaped: boolean, rewards: string[] = []) {
+    if (this.leaving) return;
+    // out of the harbour mouth: the VICTORY banner first, then home
+    if (escaped && !this.cutscene)
+      return this.celebrate('Escape from Telepylus', rewards, () => this.leaveHarbor(true));
+    this.leaving = true;
+    this.player.frozen = true;
+    if (!escaped) {
+      publishVoyageEvent(this, { type: 'challenge_failed', island: 'telepylus' });
+      const st = this.stats;
+      st.hp = st.maxHp;
+      this.registry.set('stats', st);
+      this.registry.set('statueBy', 'foot');
+    }
+    const back = prop(this.raw, 'returnTo', '');
+    this.cameras.main.fadeOut(escaped ? 600 : 900, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      this.scene.start('village', { from: back } as MapSceneData);
+      if (!escaped) toast('You wash up on the islet, battered but alive. Fully healed.', 3000);
+    });
   }
 
   /** Sail to the ship's target scene; exits there bring the player back to this shore. */
@@ -937,7 +1787,7 @@ export class MapScene extends Phaser.Scene {
     };
     const idle = { up: false, down: false, left: false, right: false };
     const dt = Math.min(delta, 50) / 1000;
-    if (this.sailing && this.ship && !this.dialog && !this.leaving) {
+    if (this.sailing && this.ship && !this.dialog && !this.leaving && !this.cutscene) {
       if (this.ship.step(dt, input)) this.openSea();
       this.player.update(idle);
     } else {
@@ -945,6 +1795,8 @@ export class MapScene extends Phaser.Scene {
       this.player.update(input);
     }
     this.ship?.update(time);
+    this.archery?.update(time, delta);
+    this.harbor?.update(time, delta);
     for (const n of this.npcs) n.update(time, delta);
     for (const e of this.enemies) e.update(time, this.player);
     if (!this.sailing) this.checkPortals();

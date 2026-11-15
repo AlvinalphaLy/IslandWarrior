@@ -285,5 +285,110 @@
     "provider": "ElevenLabs",
     "model": "eleven_multilingual_v2",
     "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "cyclops_arrival_1": {
+    "hash": "74b9f93aa2887813c028525168a304ad11a5095724fc498ef70521dde9f8658c",
+    "file": "cyclops_arrival_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "cyclops_arrival_2": {
+    "hash": "2dc46dc03db2184ad752680dfe1b68fb44f1d7ef455df0357b3d17e9a61af258",
+    "file": "cyclops_arrival_2.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "8dEUmyPMdDdK91vboYih"
+  },
+  "cyclops_arrival_3": {
+    "hash": "1627b99dc7f06fb7ea544d15aab568006f1fa727dda07ac01886788f875188aa",
+    "file": "cyclops_arrival_3.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "cyclops_bow_1": {
+    "hash": "15b5990b986cd76aa73b138706f69e835b3f5c9fb16faf4fb40be021a37d7f99",
+    "file": "cyclops_bow_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "cyclops_success_1": {
+    "hash": "0e865b919588b84e2f718a0d664fbd951c0bee281da67af6c93ec00546d31298",
+    "file": "cyclops_success_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "cyclops_success_2": {
+    "hash": "dc6d9ef9d86bf8a647090fef68f6e638dcc9671b1484c900f71ad53124b7f4ba",
+    "file": "cyclops_success_2.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "cyclops_failure_1": {
+    "hash": "3c81f293b9db12b57fcc0508a95973316b30849a79c405bd39798776d5d80290",
+    "file": "cyclops_failure_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "circe_success_1": {
+    "hash": "05513505610ac59b6a93457cce3b7e2b0343437e1337acb3433f0977f19390e3",
+    "file": "circe_success_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "circe_success_2": {
+    "hash": "cf4dc167973fdfd6b509f7ab087c71c7f7cf477258cde4376a38d15e6ed4bbbd",
+    "file": "circe_success_2.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "circe_failure_1": {
+    "hash": "ae3b137fcaab842dab5a301db7feb01db7c1853338b2458a15fcc8de04463f43",
+    "file": "circe_failure_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "telepylus_arrival_1": {
+    "hash": "1ae31e59d683bbf9d975e6fe65f9c29cf0812befa2a429e636d1248bc453f433",
+    "file": "telepylus_arrival_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "telepylus_arrival_2": {
+    "hash": "982b9976639821cab38fbb3d86806ca6fe43917c22e627f7df3e4ebdf07e5fad",
+    "file": "telepylus_arrival_2.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "telepylus_success_1": {
+    "hash": "3c91803f4288eb499cd0dfe3b6805e0cbc4a005809ce71ba1fd0ba2972cf4570",
+    "file": "telepylus_success_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "telepylus_success_2": {
+    "hash": "945a3c394bf5de2d392ceef49f04fb4532b8019f1f9a8a542a3a9b248ce68dcc",
+    "file": "telepylus_success_2.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
+  },
+  "telepylus_failure_1": {
+    "hash": "3796a73cc114c7af6eb87b8b2f16e98cbf8626201aa3d5106f4c52fdfba98f15",
+    "file": "telepylus_failure_1.mp3",
+    "provider": "ElevenLabs",
+    "model": "eleven_multilingual_v2",
+    "voice": "auq43ws1oslv0tO4BDa7"
   }
 }

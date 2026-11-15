@@ -1,5 +1,6 @@
-/** The playable first island is an Odyssey-inspired adaptation of Aeaea, Circe's island. */
+/** Session progression for the implemented Odyssey islands; challenge mechanics own their rewards. */
 export type VoyageStage = 'harbor' | 'sailing' | 'landfall' | 'grotto' | 'returning' | 'complete';
+export type ChallengeId = 'circe' | 'cyclops' | 'telepylus';
 export type LandingReason = 'food' | 'treasure';
 export type VoyageEvent =
   | { type: 'board' }
@@ -7,9 +8,15 @@ export type VoyageEvent =
   | { type: 'choose_reason'; reason: LandingReason }
   | { type: 'enter_grotto' }
   | { type: 'victory'; enemy: string }
-  | { type: 'recover_moly' };
+  | { type: 'recover_moly' }
+  | { type: 'enter_challenge'; island: ChallengeId }
+  | { type: 'challenge_won'; island: ChallengeId }
+  | { type: 'challenge_failed'; island: ChallengeId }
+  | { type: 'bow_found' };
 export interface VoyageProgress {
   version: 1;
+  activeChallenge?: ChallengeId;
+  completedChallenges: ChallengeId[];
   stage: VoyageStage;
   reason: LandingReason;
   defeated: string[];
@@ -22,6 +29,7 @@ export interface VoyageTransition {
 }
 export const newVoyage = (): VoyageProgress => ({
   version: 1,
+  completedChallenges: [],
   stage: 'harbor',
   reason: 'food',
   defeated: [],
@@ -31,7 +39,12 @@ export const newVoyage = (): VoyageProgress => ({
 
 /** Advance only from verified game events; replayed hooks never repeat a story beat or grant inventory. */
 export function advanceVoyage(current: VoyageProgress, event: VoyageEvent): VoyageTransition {
-  let progress = { ...current, defeated: [...current.defeated], seen: [...current.seen] };
+  let progress = {
+    ...current,
+    completedChallenges: [...(current.completedChallenges ?? [])],
+    defeated: [...current.defeated],
+    seen: [...current.seen],
+  };
   const beats: string[] = [];
   const emit = (key: string) => {
     if (!progress.seen.includes(key)) {
@@ -45,9 +58,13 @@ export function advanceVoyage(current: VoyageProgress, event: VoyageEvent): Voya
       if (progress.stage === 'harbor') {
         progress.stage = 'sailing';
         emit('voyage_departure');
-      } else if (progress.stage === 'returning' && progress.hasMoly) {
+      } else if (
+        progress.stage === 'returning' &&
+        (progress.hasMoly || progress.completedChallenges.includes(progress.activeChallenge!))
+      ) {
         progress.stage = 'complete';
-        emit('voyage_departure_aeaea');
+        if (!progress.activeChallenge || progress.activeChallenge === 'circe')
+          emit('voyage_departure_aeaea');
       }
       break;
     case 'landfall':
@@ -72,6 +89,47 @@ export function advanceVoyage(current: VoyageProgress, event: VoyageEvent): Voya
         emit(`voyage_${progress.reason}`);
         emit('voyage_challenge');
       }
+      break;
+    case 'enter_challenge': {
+      if (progress.stage === 'harbor') emit('voyage_departure');
+      progress.activeChallenge = event.island;
+      if (progress.completedChallenges.includes(event.island)) break;
+      progress.stage = 'grotto';
+      if (event.island === 'circe') {
+        emit('voyage_landfall');
+        emit(`voyage_${progress.reason}`);
+        emit('voyage_challenge');
+      } else {
+        emit(`${event.island}_arrival`);
+      }
+      break;
+    }
+    case 'challenge_won':
+      if (
+        progress.activeChallenge !== event.island ||
+        progress.completedChallenges.includes(event.island)
+      )
+        break;
+      progress.completedChallenges.push(event.island);
+      progress.stage = 'returning';
+      if (event.island === 'circe') progress.hasMoly = true;
+      emit(`${event.island}_success`);
+      break;
+    case 'challenge_failed':
+      if (
+        progress.activeChallenge !== event.island ||
+        progress.completedChallenges.includes(event.island)
+      )
+        break;
+      progress.stage = 'sailing';
+      emit(`${event.island}_failure`);
+      break;
+    case 'bow_found':
+      if (
+        progress.activeChallenge === 'cyclops' &&
+        !progress.completedChallenges.includes('cyclops')
+      )
+        emit('cyclops_bow');
       break;
     case 'victory':
       if (progress.stage === 'grotto' && !progress.defeated.includes(event.enemy)) {
@@ -103,10 +161,14 @@ export function voyageObjective(progress: VoyageProgress): string {
         ? 'Search the sanctuary for supplies.'
         : 'Follow the bronze markers toward the hidden hoard.';
     case 'grotto':
-      return 'Survive the enchanted grotto and recover the moly in its chest.';
+      if (progress.activeChallenge === 'cyclops')
+        return 'Recover the bow, align the axes and bring down the boulder.';
+      if (progress.activeChallenge === 'telepylus')
+        return 'Watch the boulder shadows and steer south out of the harbor.';
+      return 'Defeat the grotto champion to recover the moly and your challenge prize.';
     case 'returning':
-      return 'Bring the moly back to the black ship.';
+      return 'Your challenge is won. Return to the black ship with your crew.';
     case 'complete':
-      return 'Aeaea is behind you. The next island remains ahead; Ithaca is not reached yet.';
+      return `${progress.completedChallenges.length} challenge(s) won. Other islands remain ahead; Ithaca is not reached yet.`;
   }
 }

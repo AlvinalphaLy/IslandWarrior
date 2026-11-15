@@ -1,3 +1,4 @@
+import { CHALLENGE_BEATS } from './challenge-stories';
 import { VOYAGE_BEATS } from './voyage';
 /** Fixed scripts from the v2 team plan. Scene owners opt in through narrate(key). */
 export type Voice =
@@ -211,3 +212,6 @@ NARRATION.journey = [
 
 /** Generate only the current boat-first island story with npm run voices -- --only=voyage. */
 NARRATION.voyage = Object.values(VOYAGE_BEATS).flat();
+
+/** Only new challenge dialogue; unchanged voyage recordings remain cached. */
+NARRATION.challenges = Object.values(CHALLENGE_BEATS).flat();

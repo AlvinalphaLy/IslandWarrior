@@ -1,3 +1,4 @@
+import { CHALLENGE_BEATS } from '../data/challenge-stories';
 import type Phaser from 'phaser';
 import { VOYAGE_BEATS } from '../data/voyage';
 import type { NarrationCard } from '../data/narration';
@@ -19,7 +20,7 @@ export interface VoyageCue {
 
 /** Read session progress without creating any UI, save system, combat rewards or inventory entries. */
 export function getVoyage(scene: Phaser.Scene): VoyageProgress {
-  return scene.registry.get(REGISTRY_KEY) ?? newVoyage();
+  return { ...newVoyage(), ...(scene.registry.get(REGISTRY_KEY) ?? {}) };
 }
 
 /** Publish story data for the UI owner; deduplication survives scene transitions through the registry. */
@@ -28,7 +29,7 @@ export function publishVoyageEvent(scene: Phaser.Scene, event: VoyageEvent): Voy
   scene.registry.set(REGISTRY_KEY, transition.progress);
   const cues = transition.beats.map((key) => ({
     key,
-    cards: VOYAGE_BEATS[key],
+    cards: VOYAGE_BEATS[key] ?? CHALLENGE_BEATS[key],
     progress: transition.progress,
     objective: voyageObjective(transition.progress),
   }));

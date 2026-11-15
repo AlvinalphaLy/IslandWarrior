@@ -38,3 +38,19 @@ test('entering sanctuary by ship defaults to food and emits the missing landing 
   assert.equal(advanceVoyage(result.progress, { type: 'enter_grotto' }).beats.length, 0);
   assert.equal(sailing.stage, 'sailing');
 });
+
+test('implemented challenges can be completed in any order without duplicate rewards or beats', () => {
+  let state = advanceVoyage(newVoyage(), { type: 'board' }).progress;
+  for (const island of ['telepylus', 'cyclops', 'circe'] as const) {
+    state = advanceVoyage(state, { type: 'enter_challenge', island }).progress;
+    const failed = advanceVoyage(state, { type: 'challenge_failed', island });
+    assert.equal(failed.progress.completedChallenges.includes(island), false);
+    state = advanceVoyage(failed.progress, { type: 'enter_challenge', island }).progress;
+    const won = advanceVoyage(state, { type: 'challenge_won', island });
+    assert.ok(won.beats.includes(`${island}_success`));
+    assert.equal(advanceVoyage(won.progress, { type: 'challenge_won', island }).beats.length, 0);
+    state = advanceVoyage(won.progress, { type: 'board' }).progress;
+    assert.equal(state.stage, 'complete');
+  }
+  assert.equal(state.completedChallenges.length, 3);
+});

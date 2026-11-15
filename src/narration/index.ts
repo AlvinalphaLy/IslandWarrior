@@ -155,7 +155,7 @@ export function showNarration(cards: readonly NarrationCard[], options: Narratio
     q('.narration-speaker').textContent = card.speaker;
     q('.narration-counter').textContent = `${index + 1} / ${cards.length}`;
     root.querySelector('.narration-portrait')?.remove();
-    const portrait = document.createElement(card.voice === 'oracle' ? 'img' : 'div');
+    const portrait = document.createElement(card.speaker === 'The Oracle' ? 'img' : 'div');
     portrait.className = 'narration-portrait';
     portrait.setAttribute('aria-hidden', 'true');
     if (portrait instanceof HTMLImageElement) {

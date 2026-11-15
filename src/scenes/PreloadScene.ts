@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { CHARACTER_SHEETS, FRAME_H, FRAME_W } from '../entities/Character';
 import { BATTLER_FILES, GREEK_SHEETS, START_STATS } from '../data/enemies';
 
-export const MAPS = ['village', 'cave', 'dungeon', 'circe'];
+export const MAPS = ['village', 'cave', 'dungeon', 'circe', 'cyclops', 'telepylus'];
 export const TILESETS = [
   'village',
   'water',
@@ -15,6 +15,7 @@ export const TILESETS = [
   'viking',
   'grotto',
   'shore',
+  'harbor',
 ];
 
 /** Loads every map, tileset and character once, then starts the village. */
@@ -48,9 +49,41 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('cave_bg', 'assets/greek/cave_bg.png');
     // ship of Odysseus (tools/make_ship.py): 4 frames of 128x84, waterline at y=66
     this.load.spritesheet('ship', 'assets/props/ship.png', { frameWidth: 128, frameHeight: 84 });
+    // the upgraded ship (prize for escaping Telepylus): crimson sail, bronze hull (tools/make_ship_upgrade.py)
+    this.load.spritesheet('ship_bronze', 'assets/props/ship_bronze.png', {
+      frameWidth: 128,
+      frameHeight: 84,
+    });
     // wooden horse statue on the beach (tools/make_horse_statue.py)
     this.load.image('horse_statue', 'assets/props/horse_statue.png');
+    // stone head of Polyphemus on the small south-east islet (tools/make_cyclops_head.py)
+    // frames: 0 dormant, 1-2 awake (jaw open, eye blazing / glowing)
+    this.load.spritesheet('cyclops_head', 'assets/props/cyclops_head.png', {
+      frameWidth: 32,
+      frameHeight: 34,
+    });
+    // the amphora of Maron's wine beside it: pour it into the mouth to wake the head (tools/make_amphora.py)
+    this.load.spritesheet('amphora', 'assets/props/amphora.png', {
+      frameWidth: 14,
+      frameHeight: 19,
+    });
+    // the archery puzzle in the Cyclops cave (tools/make_archery_props.py, src/entities/Archery.ts)
+    for (const k of ['arrow', 'bow', 'axe', 'boulder', 'bridge'])
+      this.load.image(k, `assets/props/${k}.png`);
+    this.load.spritesheet('target', 'assets/props/target.png', { frameWidth: 14, frameHeight: 22 });
+    this.load.spritesheet('sheep', 'assets/props/sheep.png', { frameWidth: 18, frameHeight: 15 });
+    // the Laestrygonians (tools/make_laestrygon_props.py, src/entities/Harbor.ts): Homer's statue on the narrow islet,
+    // who sings you into their tale (0 marble, 1 lyre turned gold), the giants on the harbour cliffs (0 rock overhead,
+    // 1 thrown), and their rocks
+    this.load.spritesheet('homer', 'assets/props/homer.png', { frameWidth: 20, frameHeight: 40 });
+    this.load.spritesheet('giant', 'assets/props/giant.png', { frameWidth: 26, frameHeight: 28 });
+    this.load.image('rock', 'assets/props/rock.png');
     // Circe's statue on the islet (tools/make_witch_statue.py): 2 frames of 16x32, glowing eyes
+    // the treasure chest that lures you to Circe's islet (tools/make_treasure_chest.py): closed / open, 24x20
+    this.load.spritesheet('treasure_chest', 'assets/props/treasure_chest.png', {
+      frameWidth: 24,
+      frameHeight: 20,
+    });
     this.load.spritesheet('witch_statue', 'assets/props/witch_statue.png', {
       frameWidth: 16,
       frameHeight: 32,
@@ -76,8 +109,20 @@ export class PreloadScene extends Phaser.Scene {
       repeat: -1,
     });
     this.anims.create({
+      key: 'cyclops_head-idle',
+      frames: this.anims.generateFrameNumbers('cyclops_head', { frames: [1, 2] }),
+      frameRate: 1.2,
+      repeat: -1,
+    });
+    this.anims.create({
       key: 'ship-idle',
       frames: this.anims.generateFrameNumbers('ship', { start: 0, end: 3 }),
+      frameRate: 4,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: 'ship_bronze-idle',
+      frames: this.anims.generateFrameNumbers('ship_bronze', { start: 0, end: 3 }),
       frameRate: 4,
       repeat: -1,
     });

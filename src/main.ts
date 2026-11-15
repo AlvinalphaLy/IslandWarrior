@@ -27,6 +27,8 @@ const game = new Phaser.Game({
     new MapScene('cave'),
     new MapScene('dungeon'),
     new MapScene('circe'),
+    new MapScene('cyclops'),
+    new MapScene('telepylus'),
     new BattleScene(),
   ],
 });

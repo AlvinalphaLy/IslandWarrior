@@ -298,30 +298,31 @@ def area(name, typ, x, y, w, h, **props):
 point("player", "player", LADDER_X + 0.5, 3.6, sprite="adam")
 area("exit_ladder", "exit", LADDER_X * TS + 1, 2 * TS - 2, 14, 9, target="village")
 # enemies: `enemy` = id in src/data/enemies.ts, names must be unique (defeats are remembered by name)
+# one monster per dungeon. Odyssey enemies (tools/greek_battlers.py); the Fantasy Battlers ids in enemies.ts also work.
+# More spawns that fit this layout: ('captain_a', 'raider_captain', 19, 8.5), ('siren_a', 'siren', 27, 7),
+# ('siren_b', 'siren_violet', 26, 13.5), ('shade_a', 'shade', 14, 13.8), ('shade_b', 'shade_restless', 5, 14),
+# ('raider_b', 'raider', 4, 19.5), ('shade_c', 'shade', 11, 20), ('polyphemus', 'polyphemus', 21, 20.5)
 ENEMY_SPAWNS = [
-    # Odyssey enemies (tools/greek_battlers.py); the Fantasy Battlers ids in enemies.ts still work here too
-    ("raider_a", "raider", 12, 6.5),
-    ("captain_a", "raider_captain", 19, 8.5),
-    ("siren_a", "siren", 27, 7),
-    ("siren_b", "siren_violet", 26, 13.5),
-    ("shade_a", "shade", 14, 13.8),
-    ("shade_b", "shade_restless", 5, 14),
-    ("raider_b", "raider", 4, 19.5),
-    ("shade_c", "shade", 11, 20),
-    ("polyphemus", "polyphemus", 21, 20.5),
+    (
+        "raider_a",
+        "raider",
+        12,
+        6.5,
+    ),  # Telemachus training room: one easy Ciconian Raider near the entrance
 ]
 CHEST = "chest_golem"
 if VARIANT == "circe":
     # Circe's creatures: the shades she sends Odysseus to, and sirens (she warns him of them)
+    # one guardian. More spawns that fit this layout: ('shade_a', 'shade', 12, 6.5), ('siren_a', 'siren', 20, 7.5),
+    # ('shade_b', 'shade_restless', 27, 7), ('shade_c', 'shade', 16, 13), ('siren_c', 'siren', 26, 13),
+    # ('shade_d', 'shade_restless', 10, 20), ('siren_d', 'siren_violet', 22, 20)
     ENEMY_SPAWNS = [
-        ("shade_a", "shade", 12, 6.5),
-        ("siren_a", "siren", 20, 7.5),
-        ("shade_b", "shade_restless", 27, 7),
-        ("siren_b", "siren_violet", 6, 12.8),
-        ("shade_c", "shade", 16, 13),
-        ("siren_c", "siren", 26, 13),
-        ("shade_d", "shade_restless", 10, 20),
-        ("siren_d", "siren_violet", 22, 20),
+        (
+            "siren_b",
+            "siren_violet",
+            6,
+            12.8,
+        ),  # the Siren of the Rocks, on the way to the moly
     ]
     CHEST = "chest_circe"
 for name, enemy, tx, ty in ENEMY_SPAWNS:

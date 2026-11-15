@@ -6,7 +6,7 @@ Troy has fallen, but Odysseus has not won his way home. He boards the black ship
 
 The repeating story loop is **board → sail → land for a reason → discover a threat → resolve the challenge → return to the crew → depart**. Challenges grow from the reason for landing. Treasure is tempting because it could repair the ship; food matters because someone must row tomorrow. Avoid a sequence of unrelated battles or a narrator who announces every danger before discovery.
 
-This is original dialogue inspired by Homer's Odyssey, not a movie transcript. Aeaea is the first playable stop because the latest map branch already contains Circe's sanctuary. That is an adaptation for this slice, not a claim that Circe is the first island in Homer's poem.
+This is original dialogue inspired by Homer's Odyssey, not a movie transcript. Aeaea, the Cyclops den and Telepylus are playable stops because the map branch now implements their challenges. Players may visit them in any order. That is an adaptation for this slice, not a claim that Circe is the first island in Homer's poem.
 
 ## First island: a feast that forgets your name
 
@@ -22,7 +22,7 @@ This is original dialogue inspired by Homer's Odyssey, not a movie transcript. A
 
 **Ending line:** “One island behind you. A long sea ahead. Remember the cost of a welcome that asks you to forget home. Ithaca is still waiting.”
 
-This completes the first island, not the entire Odyssey. The next destination remains a future episode.
+This completes the Aeaea episode, not the entire Odyssey. The other implemented islands remain available in any order.
 
 ## Character direction
 
@@ -32,19 +32,26 @@ This completes the first island, not the entire Odyssey. The next destination re
 - **Circe:** hospitality, power and the temptation to stop struggling. Avoid inventing a defeated-Circe boss when the map does not contain one.
 - **Narrator:** describes what changed because the player acted. Keep guidance short enough to preserve exploration.
 
+## Other implemented islands
+
+**The Cyclops den — provisions become a trap.** Sheep, cheese and shelter draw the crew into Polyphemus’s cave. The giant claims the visitors as his next meal. The Oracle hints at patience and accuracy: find the bow, stand on the chalk mark and shoot through the six axe rings to hit the target. The existing boulder crushes Polyphemus; narration waits for that scene, the victory banner and automatic boat return. Maron’s wine grants the existing +10 maximum HP reward. The final warning asks Odysseus to leave without boasting his name. This archery/boulder solution is an adaptation to the implemented puzzle, not a literal retelling of Homer’s cave escape.
+
+**Telepylus — a harbor that closes its jaws.** Homer’s lyre leads to a sheltered anchorage where the crew hopes to replenish supplies. Giants turn the cliffs into a trap. The Oracle calls attention to boulder shadows and the southern exit; the player steers the existing boat through the attack. A wreck returns the crew healed and gives one retry-oriented story beat without granting a win. Escaping earns the existing bronze hull and crimson sail upgrade, then narration recognizes the shipwrights’ work after the victory banner and return. Homer reminds the captain that an open way out matters more than a beautiful harbor.
+
+Entering, failing, finding the bow and winning each challenge generate story events. Wins and clips are deduplicated for the session. No extra items, gold or stats are created by the story reducer. Completing all three stops still leaves Ithaca ahead.
+
 ## Future island outline (not implemented)
 
 | Island / passage | Why land or continue | Challenge | Lesson carried forward |
 | --- | --- | --- | --- |
 | Lotus shore | Fruit and rest | Remember the crew's purpose instead of staying forever | Comfort can erase duty |
-| Cyclops cave | Sheep, cheese, shelter | Outsmart Polyphemus and choose whether pride is worth the risk | A victory can create a worse enemy |
 | Aeolus | A safe wind home | Preserve trust around a gift the crew misunderstands | Leadership requires trust |
 | The dead | Directions no living sailor knows | Hear hard counsel and remember lost companions | Listen before acting |
 | Sirens | A passage that promises knowledge | Prepare before the song begins | Wisdom includes restraint |
 | Narrow strait | The only route onward | Choose what can be saved under pressure | Not every danger can be conquered |
 | Ithaca | Home | Recognition, loyalty and restoring a household | Returning is more than arriving |
 
-The existing Polyphemus dungeon can support a later Cyclops episode. These rows are narrative direction, not completed maps or features.
+These remaining rows are narrative direction, not completed maps or features.
 
 ## UI-owner handoff
 
@@ -69,29 +76,30 @@ The approved `showNarration` component is mounted automatically by the playback 
 
 ### Actual game hooks
 
-- `MapScene.board`: begins the voyage; reboarding with moly completes this island.
-- `MapScene.goAshore`: emits landfall only near Circe's sanctuary, not at the starting dock.
-- `MapScene.enterStatue`: records a ship arrival at the Circe destination.
-- `MapScene.create` for `circe`: emits challenge/discovery beats after the transition.
-- `MapScene.onBattleEnd`: emits first-victory text only after a real win in Circe's grotto.
-- Opening `chest_circe`: records moly once. A previously recovered chest reconciles when revisiting, so exploring before boarding does not soft-lock the story.
+- `MapScene.board` begins the voyage on the village map; quiet boarding in the harbor never starts it again.
+- `MapScene.create` publishes arrival for `circe`, `cyclops` and `telepylus` after scene construction.
+- `MapScene.say('bow_found')` queues the Cyclops hint after the real bow pickup and ordinary dialogue.
+- `MapScene.onBattleEnd` records real Circe victories and defeats. Running away never counts as a win.
+- `MapScene.openChest` records actual moly recovery, including automatic boss rewards.
+- `MapScene.celebrate` records confirmed challenge completion after gameplay grants its original prizes.
+- `MapScene.leaveHarbor(false)` records a wreck without completing the challenge.
 
-Repeated boarding, kills, chest interactions and scene callbacks do not duplicate beats. Defeat and retreat do not count as victories. The first food/treasure selection locks once acknowledged. Story progress is session-only, matching the existing registry saves; it is not a backend save/load system.
+Playback waits for ordinary dialogue, combat, camera fades and challenge cutscenes. Success cards stay queued through the victory banner and play after automatic return, so pausing for narration cannot stop a reward timer. Story progress is session-only, matching the game registry; it is not backend save/load.
 
 ## Voice production
 
-The new boat-first script is the `voyage` narration group. Old trainer and homecoming clips are preserved as assets but are not used by the new game hooks. All 12 new boat-first clips have been generated with ElevenLabs and are cached locally. The new text does not play an old clip with different words.
+The new boat-first script is the `voyage` narration group. Old trainer and homecoming clips are preserved as assets but are not used by the new game hooks. All 12 boat-first clips and 15 challenge clips have been generated with ElevenLabs and are cached locally. The new text does not play an old clip with different words.
 
 ```sh
-npm run voices -- --dry-run --only=voyage
+npm run voices -- --dry-run --only=challenges
 # Once the team approves the new wording, generation uses ElevenLabs credits:
-npm run voices -- --only=voyage
+npm run voices -- --only=challenges
 ```
 
-If a clip fails to load or playback is blocked, the popup keeps its captions and replay/mute controls. No additional voice accounts are required; the script uses the existing narrator and Oracle roles.
+If a clip fails to load or playback is blocked, the popup keeps its captions and replay/mute controls. No additional voice accounts or live AI agents are required. Homer uses the configured narrator voice; Polyphemus uses the configured deep Dragon voice; the Oracle retains her own configured voice. Important speakers have matching captions.
 
 ## Checks
 
-`npm run test:integrations` tests voyage order, idempotence, choices and early/out-of-order events. `npm run smoke:story` checks boarding, actual Circe scene entry, a real battle victory, chest recovery and reboarding with visible story cards, audible playback readiness, paused ship movement and queue draining. The upstream gameplay smoke separately checks ship controls, collision, Circe transitions and Greek combat. `npm run build` verifies the combined source.
+`npm run test:integrations` tests voyage order, idempotence, choices and early/out-of-order events. `npm run smoke:story` checks boarding, actual Circe scene entry, a real battle victory, chest recovery and reboarding with visible story cards, audible playback readiness, paused ship movement and queue draining. `npm run smoke:challenges` verifies all three real victories, original prizes, automatic returns, bow shooting and a harbor wreck/retry. The upstream gameplay smoke separately checks ship controls, collision, Circe transitions and Greek combat. `npm run build` verifies the combined source.
 
 For manual testing, run `npm run dev`, open `/`, approach the black ship and press E. The first voiced story popup appears after boarding. E/Space reveals a line, then advances; Escape skips the current batch. Use the speaker button if narration was previously muted. `?story=off` disables automatic playback for low-level gameplay smoke tests.

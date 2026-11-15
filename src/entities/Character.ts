@@ -63,16 +63,25 @@ export const CHARACTER_SHEETS: Record<string, SheetLayout> = {
   hades: LIMEZU,
   heracles: LIMEZU,
   aphrodite: LIMEZU,
+  // the player's default look: Odysseus in his battle gear (tools/greek_skins.py)
+  odysseus: LIMEZU,
+  // FaZe Odysseus: the hero in FaZe Clan's black, white and red (tools/greek_skins.py), won in Circe's grotto
+  faze: LIMEZU,
 };
 
-/** Skins the player can cycle through with C, in order. */
-export const PLAYER_SKINS: { key: string; name: string }[] = [
+/**
+ * Skins the player can cycle through with C, in order. The first is the default. `unlock`: a challenge (scene key)
+ * that must be won first (registry `challengesWon`); until then C skips the skin.
+ */
+export const PLAYER_SKINS: { key: string; name: string; unlock?: string }[] = [
+  { key: 'odysseus', name: 'Odysseus' },
   { key: 'adam', name: 'Adam' },
   { key: 'zeus', name: 'Zeus' },
   { key: 'hermes', name: 'Hermes' },
   { key: 'hades', name: 'Hades' },
   { key: 'heracles', name: 'Heracles' },
   { key: 'aphrodite', name: 'Aphrodite' },
+  { key: 'faze', name: 'FaZe Odysseus', unlock: 'circe' },
 ];
 
 export function createCharacterAnims(scene: Phaser.Scene, key: string) {

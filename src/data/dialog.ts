@@ -46,6 +46,56 @@ export const DIALOG: Record<string, DialogEntry> = {
   sign_3: { name: 'Sign', lines: ['Fishing spot. Patience required.'] },
   sign_4: { name: 'Sign', lines: ['Welcome to the island!'] },
   sign_5: { name: 'Sign', lines: ['Garden. Please keep off the flowers.'] },
+  // the head of Polyphemus: pour the amphora of wine into its mouth (pourWine), then E at the head enters his cave
+  cyclops_head: {
+    name: 'Head of Polyphemus',
+    lines: [
+      'Words are scratched into the stone brow: "Nobody did this to me."',
+      'The open jaw breathes wine and the smell of sheep. You climb down into the dark...',
+    ],
+  },
+  cyclops_head_awaken: {
+    name: 'Polyphemus',
+    lines: [
+      '"Wine... strong, sweet wine! More, little stranger. What is your name?"',
+      '"Nobody," you answer. The stone jaw grinds open onto a cave below. Press E at the head to enter.',
+    ],
+  },
+  // ---- the Laestrygonians: the giant's fist on the narrow islet, and their harbour (src/entities/Harbor.ts) ----
+  homer: {
+    name: 'Homer',
+    lines: [
+      '"...to Telepylus, land of the Laestrygonians, and its harbour ringed with sheer cliffs."',
+      'The golden lyre rings. A wave lifts the ship and sweeps it into the tale...',
+    ],
+  },
+  homer_awaken: {
+    name: 'Homer',
+    lines: [
+      'The blind poet\'s stone lyre turns to gold. "Sing to me, Muse, of the man of many turns..."',
+      '"...and of the giants who hurled boulders from the cliffs." Press E at Homer to sail into the tale.',
+    ],
+  },
+  harbor_intro: {
+    name: 'Telepylus',
+    lines: [
+      'Giants on the cliffs! Watch for the shadows on the water, and sail south out of the harbour mouth!',
+    ],
+  },
+  // ---- the cave of Polyphemus (tools/build_cyclops_cave.py, src/entities/Archery.ts) ----
+  bow_found: {
+    name: 'The bow of Odysseus',
+    lines: [
+      'Your great bow, the one no other man can string!',
+      'Press F to shoot (on touch: the Bow button).',
+      'Below is the test of the axes: six axes in a row, each with a ring at the top, and a boulder sealing the den.',
+      'Stand on the chalk mark where the gold arrow bounces and press F. Your arrow will fly through every ring into the bronze target.',
+    ],
+  },
+  chest_cyclops: {
+    name: "Polyphemus' hoard",
+    lines: ['Cheeses, fleeces, wine jars... and a flask of ambrosia, hidden from his own flock.'],
+  },
   horse_statue: {
     name: 'Wooden Horse',
     lines: [
@@ -58,7 +108,7 @@ export const DIALOG: Record<string, DialogEntry> = {
   ship_board: {
     name: 'The black ship',
     lines: [
-      'All aboard. The crew needs fresh water and food. Sail toward the island sanctuary. Arrows/WASD steer; E goes ashore.',
+      "All aboard! Arrows/WASD to sail, E to go ashore. The open sea to the south leads to the dragon's lair.",
     ],
   },
   ship_noland: {
@@ -82,8 +132,15 @@ export const DIALOG: Record<string, DialogEntry> = {
   circe_statue: {
     name: 'Statue of Circe',
     lines: [
-      'A stone woman watches over the island sanctuary. Fresh water runs beneath her feet, but no one answers your scouts.',
-      'Beyond the sanctuary, a feast waits in the grotto. Your hungry crew has already gone inside...',
+      'A stone witch stands in a cloud of black smoke. Her eyes glow violet.',
+      'The smoke curls around you and pulls you down into the dark...',
+    ],
+  },
+  circe_awaken: {
+    name: 'Circe',
+    lines: [
+      'Gold for the greedy, smoke for the fool...',
+      'A stone witch rises where the treasure stood. Her eyes burn violet. Press E at her statue to enter her grotto.',
     ],
   },
   chest_circe: {
