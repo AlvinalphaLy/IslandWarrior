@@ -7,6 +7,7 @@ import { touch, setActionHandler, setShootHandler, showDialog, toast, updateHud 
 import { Enemy } from '../entities/Enemy';
 import { Ship } from '../entities/Ship';
 import { Archery } from '../entities/Archery';
+import { Harbor } from '../entities/Harbor';
 import { CHEST_REWARDS, ENEMIES, PlayerStats, START_STATS } from '../data/enemies';
 import type { BattleData, BattleResult } from './BattleScene';
 
@@ -42,7 +43,9 @@ interface Interactable {
  */
 interface StatueSpot {
   it: Interactable; x: number; y: number; arrive: Phaser.Math.Vector2;
-  sprite: Phaser.GameObjects.Sprite; aura: AuraStyle | null; chest: Phaser.GameObjects.Sprite | null; style: 'rise' | 'pour';
+  sprite: Phaser.GameObjects.Sprite; aura: AuraStyle | null; chest: Phaser.GameObjects.Sprite | null; style: 'rise' | 'pour' | 'hurl';
+  /** not woken yet: the first E plays its awakening instead of entering */
+  asleep: boolean;
 }
 /** Aura palettes: the glow hugging the statue, the pool at its feet, and the two wisp textures rising from it. */
 const AURAS = {
@@ -84,6 +87,8 @@ export class MapScene extends Phaser.Scene {
   private ship: Ship | null = null;
   /** Odysseus' bow: arrows, targets, gates, axes and sheep (Spawns of those types; see Archery.ts) */
   private archery: Archery | null = null;
+  /** the Laestrygonian harbour escape (map property `harbor`; see Harbor.ts) */
+  private harbor: Harbor | null = null;
   private shipIt: Interactable | null = null;
   private shipTalk = new Phaser.Geom.Rectangle();
   private sailing = false;
@@ -145,6 +150,11 @@ export class MapScene extends Phaser.Scene {
       { scene: this, walls: this.walls, player: this.player, say: (key) => this.say(key) },
       this.layer('Spawns'), this.layer('Collision'),
     );
+    // the harbour of the Laestrygonians: you start at the helm and must sail out under the giants' boulders
+    this.harbor = prop(this.raw, 'harbor', false) && this.ship
+      ? new Harbor({ scene: this, ship: this.ship, say: (key) => this.say(key), leave: (escaped) => this.leaveHarbor(escaped) }, this.layer('Spawns'))
+      : null;
+    if (this.harbor) { this.board(true); toast(dialogFor('harbor_intro').lines[0], 4200); }
 
     const cam = this.cameras.main;
     cam.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
@@ -266,13 +276,16 @@ export class MapScene extends Phaser.Scene {
         const key = prop(s, 'sprite', 'horse_statue');
         const statue = this.add.sprite(s.x, s.y, key).setOrigin(0.5, 1).setDepth(s.y - fh / 2);
         // `lure`: a sprite (the treasure chest, the amphora) stands at `lureAt` (default: on the statue's spot) until
-        // used; `awaken` says what using it does: 'rise' (default, the statue rises: awaken()) or 'pour' (pourWine())
+        // used; `awaken` says what using it does: 'rise' (default, the statue rises: awaken()), 'pour' (pourWine()),
+        // or 'hurl' (no lure: the giant's fist throws the boulder in its grip the first time: hurlBoulder())
         const lure = prop(s, 'lure', '');
-        const style = prop<string>(s, 'awaken', 'rise') === 'pour' ? 'pour' : 'rise';
-        const asleep = !!lure && !((this.registry.get('awakened') as string[] | undefined) ?? []).includes(s.name);
+        const awakenProp = prop<string>(s, 'awaken', 'rise');
+        const style: StatueSpot['style'] = awakenProp === 'pour' || awakenProp === 'hurl' ? awakenProp : 'rise';
+        const asleep = (!!lure || style === 'hurl') && !((this.registry.get('awakened') as string[] | undefined) ?? []).includes(s.name);
         const la = prop(s, 'lureAt', '').split(',').map(Number);
         const [lx, ly] = la.length === 2 ? la : [s.x, s.y];
-        const chest = asleep ? this.add.sprite(lx, ly, lure, 0).setOrigin(0.5, 1).setDepth(ly - 2) : null;
+        const chest = asleep && lure ? this.add.sprite(lx, ly, lure, 0).setOrigin(0.5, 1).setDepth(ly - 2) : null;
+        if (style === 'hurl' && !asleep) statue.setFrame(1);   // the fist stands open, its boulder thrown
         // `aura`: true = black smoke, or the name of an AURAS palette ('wine')
         const auraProp = prop<boolean | string>(s, 'aura', false);
         const aura: AuraStyle | null = auraProp === true ? 'black' : typeof auraProp === 'string' && auraProp in AURAS ? auraProp as AuraStyle : null;
@@ -290,7 +303,7 @@ export class MapScene extends Phaser.Scene {
           const it: Interactable = { kind: 'statue', rect, dialog, id: s.name, target };
           this.interactables.push(it);
           const a = prop(s, 'arrive', '').split(',').map(Number);
-          this.statues.push({ it, x: s.x, y: s.y, arrive: new Phaser.Math.Vector2(a.length === 2 ? a[0] : s.x, a.length === 2 ? a[1] : s.y + 10), sprite: statue, aura, chest, style });
+          this.statues.push({ it, x: s.x, y: s.y, arrive: new Phaser.Math.Vector2(a.length === 2 ? a[0] : s.x, a.length === 2 ? a[1] : s.y + 10), sprite: statue, aura, chest, style, asleep });
         } else if (dialog) {
           const it: Interactable = { kind: 'sign', rect, dialog, id: s.name };
           this.interactables.push(it);
@@ -438,6 +451,7 @@ export class MapScene extends Phaser.Scene {
     if (this.leaving || this.cutscene) return;
     if (this.dialog) return this.advanceDialog();
     if (this.sailing) {
+      if (this.harbor) return toast('No landing here: the giants would crush you. Sail for the harbour mouth!', 2200);
       const st = this.statueInReach();
       if (st) return this.openStatue(st, true);
       // statues with only a plaque (e.g. the Cyclops head on its tiny islet) can be read from the deck
@@ -525,7 +539,7 @@ export class MapScene extends Phaser.Scene {
   /** Read the statue's lines; closing them takes you into its dungeon. While the lure stands there, open it instead. */
   private openStatue(it: Interactable, byShip: boolean) {
     const spot = this.statues.find((st) => st.it === it);
-    if (spot?.chest) return spot.style === 'pour' ? this.pourWine(spot) : this.awaken(spot);
+    if (spot?.asleep) return spot.style === 'pour' ? this.pourWine(spot) : spot.style === 'hurl' ? this.hurlBoulder(spot) : this.awaken(spot);
     this.dialog = { entry: dialogFor(it.dialog), line: 0, target: it, onClose: () => this.enterStatue(it, byShip) };
     this.player.frozen = true;
     this.renderDialog();
@@ -555,6 +569,7 @@ export class MapScene extends Phaser.Scene {
   private awaken(st: StatueSpot) {
     const chest = st.chest!;
     st.chest = null;
+    st.asleep = false;
     this.cutscene = true;
     this.player.frozen = true;
     this.registry.set('awakened', [...((this.registry.get('awakened') as string[] | undefined) ?? []), st.it.id]);
@@ -644,6 +659,7 @@ export class MapScene extends Phaser.Scene {
   private pourWine(st: StatueSpot) {
     const jar = st.chest!;
     st.chest = null;
+    st.asleep = false;
     this.cutscene = true;
     this.player.frozen = true;
     this.registry.set('awakened', [...((this.registry.get('awakened') as string[] | undefined) ?? []), st.it.id]);
@@ -693,6 +709,50 @@ export class MapScene extends Phaser.Scene {
       if (st.aura) this.addAura(s, true, st.aura);
     });
     at(3000, () => {
+      this.cutscene = false;
+      this.dialog = { entry: dialogFor(`${st.it.id}_awaken`), line: 0, target: st.it };
+      this.renderDialog();
+    });
+  }
+
+  /**
+   * The Laestrygonian fist wakes: it trembles, the ground rumbles, and it hurls the boulder in its grip far out to
+   * sea (a long arc, a shadow racing ahead of it, a towering splash); the hand stands open (frame 1). ~2.6 s.
+   */
+  private hurlBoulder(st: StatueSpot) {
+    st.asleep = false;
+    this.cutscene = true;
+    this.player.frozen = true;
+    this.registry.set('awakened', [...((this.registry.get('awakened') as string[] | undefined) ?? []), st.it.id]);
+    const s = st.sprite;
+    const at = (ms: number, fn: () => void) => this.time.delayedCall(ms, fn);
+    this.tweens.add({ targets: s, x: st.x + 1, duration: 45, yoyo: true, repeat: 9, onComplete: () => s.setX(st.x) });
+    this.cameras.main.shake(700, 0.003);
+    at(650, () => {
+      s.setFrame(1);
+      const sx = st.x, sy = st.y - 36;                          // the boulder sat in the fist, at the top of the sprite
+      const tx = st.x + 150, ty = Math.min(this.physics.world.bounds.height - 12, st.y - 40);   // far out over the bay
+      const rock = this.add.image(sx, sy, 'rock').setScale(1.2).setDepth(10000);
+      const shadow = this.add.ellipse(sx, st.y - 2, 12, 4, 0x0a1830, 0.4).setDepth(-400);
+      this.tweens.addCounter({ from: 0, to: 1, duration: 1100,
+        onUpdate: (tw) => {
+          const t = tw.getValue() ?? 0;
+          rock.setPosition(sx + (tx - sx) * t, sy + (ty - sy) * t - Math.sin(Math.PI * t) * 90).setAngle(t * 540).setScale(1.2 + Math.sin(Math.PI * t) * 0.8);
+          shadow.setPosition(sx + (tx - sx) * t, st.y - 2 + (ty - st.y + 2) * t);
+        },
+        onComplete: () => {
+          rock.destroy(); shadow.destroy();
+          const ring = this.add.ellipse(tx, ty, 10, 4).setStrokeStyle(1, 0xffffff, 0.9).setDepth(-300);
+          this.tweens.add({ targets: ring, scaleX: 4, scaleY: 4, alpha: 0, duration: 700, onComplete: () => ring.destroy() });
+          for (let i = 0; i < 20; i++) {
+            const d = this.add.rectangle(tx + Phaser.Math.Between(-4, 4), ty, 2, 2, i % 3 ? 0xffffff : 0x9fd8ff).setDepth(ty + 1);
+            const a = Phaser.Math.FloatBetween(Math.PI * 1.15, Math.PI * 1.85), v = Phaser.Math.Between(10, 30);
+            this.tweens.add({ targets: d, x: tx + Math.cos(a) * v, y: ty + Math.sin(a) * v, alpha: 0, duration: Phaser.Math.Between(400, 800), ease: 'Quad.out', onComplete: () => d.destroy() });
+          }
+          this.cameras.main.shake(250, 0.006);
+        } });
+    });
+    at(2600, () => {
       this.cutscene = false;
       this.dialog = { entry: dialogFor(`${st.it.id}_awaken`), line: 0, target: st.it };
       this.renderDialog();
@@ -815,6 +875,7 @@ export class MapScene extends Phaser.Scene {
 
   /** Sailing off the south edge of the map is the voyage to the dragon's lair, once Achilles is beaten. */
   private openSea() {
+    if (this.harbor) return this.harbor.escape();
     const it = this.shipIt;
     if (!it || this.leaving) return;
     const unlocks = (this.registry.get('unlocks') as string[] | undefined) ?? [];
@@ -826,6 +887,25 @@ export class MapScene extends Phaser.Scene {
     if (this.time.now < this.edgeToastAt) return;
     this.edgeToastAt = this.time.now + 3500;
     toast(dialogFor(unlocked ? 'ship_voyage_soon' : 'ship_voyage_locked').lines[0], 3200);
+  }
+
+  /** Leave the Laestrygonian harbour: back beside the giant's fist. Wrecked: you wash up on the islet, healed. */
+  private leaveHarbor(escaped: boolean) {
+    if (this.leaving) return;
+    this.leaving = true;
+    this.player.frozen = true;
+    if (!escaped) {
+      const st = this.stats;
+      st.hp = st.maxHp;
+      this.registry.set('stats', st);
+      this.registry.set('statueBy', 'foot');
+    }
+    const back = prop(this.raw, 'returnTo', '');
+    this.cameras.main.fadeOut(escaped ? 600 : 900, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      this.scene.start('village', { from: back } as MapSceneData);
+      if (!escaped) toast('You wash up on the islet, battered but alive. Fully healed.', 3000);
+    });
   }
 
   /** Sail to the ship's target scene; exits there bring the player back to this shore. */
@@ -922,6 +1002,7 @@ export class MapScene extends Phaser.Scene {
     }
     this.ship?.update(time);
     this.archery?.update(time, delta);
+    this.harbor?.update(time, delta);
     if (this.ship) {
       // the sail is tall: when the ship sits in front of a statue (or its chest), fade it so you can see what happens
       const ship = this.ship;

@@ -2,8 +2,8 @@ import Phaser from 'phaser';
 import { CHARACTER_SHEETS, FRAME_H, FRAME_W } from '../entities/Character';
 import { BATTLER_FILES, GREEK_SHEETS, START_STATS } from '../data/enemies';
 
-export const MAPS = ['village', 'cave', 'dungeon', 'circe', 'cyclops'];
-export const TILESETS = ['village', 'water', 'campfire', 'door', 'auto', 'cave', 'sewer', 'patch', 'viking', 'grotto', 'shore'];
+export const MAPS = ['village', 'cave', 'dungeon', 'circe', 'cyclops', 'telepylus'];
+export const TILESETS = ['village', 'water', 'campfire', 'door', 'auto', 'cave', 'sewer', 'patch', 'viking', 'grotto', 'shore', 'harbor'];
 
 /** Loads every map, tileset and character once, then starts the village. */
 export class PreloadScene extends Phaser.Scene {
@@ -38,6 +38,11 @@ export class PreloadScene extends Phaser.Scene {
     for (const k of ['arrow', 'bow', 'axe', 'boulder', 'bridge']) this.load.image(k, `assets/props/${k}.png`);
     this.load.spritesheet('target', 'assets/props/target.png', { frameWidth: 14, frameHeight: 22 });
     this.load.spritesheet('sheep', 'assets/props/sheep.png', { frameWidth: 18, frameHeight: 15 });
+    // the Laestrygonians (tools/make_laestrygon_props.py, src/entities/Harbor.ts): the fist on the narrow islet
+    // (0 gripping its boulder, 1 open), the giants on the harbour cliffs (0 rock overhead, 1 thrown), their rocks
+    this.load.spritesheet('giant_fist', 'assets/props/giant_fist.png', { frameWidth: 20, frameHeight: 41 });
+    this.load.spritesheet('giant', 'assets/props/giant.png', { frameWidth: 26, frameHeight: 28 });
+    this.load.image('rock', 'assets/props/rock.png');
     // Circe's statue on the islet (tools/make_witch_statue.py): 2 frames of 16x32, glowing eyes
     // the treasure chest that lures you to Circe's islet (tools/make_treasure_chest.py): closed / open, 24x20
     this.load.spritesheet('treasure_chest', 'assets/props/treasure_chest.png', { frameWidth: 24, frameHeight: 20 });

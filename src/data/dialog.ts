@@ -19,6 +19,10 @@ export const DIALOG: Record<string, DialogEntry> = {
   // the head of Polyphemus: pour the amphora of wine into its mouth (pourWine), then E at the head enters his cave
   cyclops_head: { name: 'Head of Polyphemus', lines: ['Words are scratched into the stone brow: "Nobody did this to me."', 'The open jaw breathes wine and the smell of sheep. You climb down into the dark...'] },
   cyclops_head_awaken: { name: 'Polyphemus', lines: ['"Wine... strong, sweet wine! More, little stranger. What is your name?"', '"Nobody," you answer. The stone jaw grinds open onto a cave below. Press E at the head to enter.'] },
+  // ---- the Laestrygonians: the giant's fist on the narrow islet, and their harbour (src/entities/Harbor.ts) ----
+  giant_fist: { name: "Giant's fist", lines: ['A stone fist the size of a house, its fingers open toward a harbour hidden in the cliffs.', 'A wave lifts the ship and sweeps it in between the rocks...'] },
+  giant_fist_awaken: { name: 'The Laestrygonians', lines: ['The fist hurls its boulder far out over the bay. Somewhere beyond the cliffs, giants roar.', 'This is the land of the Laestrygonians, eaters of men. Press E at the fist to sail into their harbour.'] },
+  harbor_intro: { name: 'Telepylus', lines: ['Giants on the cliffs! Watch for the shadows on the water, and sail south out of the harbour mouth!'] },
   // ---- the cave of Polyphemus (tools/build_cyclops_cave.py, src/entities/Archery.ts) ----
   bow_found: { name: 'The bow of Odysseus', lines: ['Your great bow, the one no other man can string!', 'Press F to shoot (on touch: the Bow button). Arrows fly over chasms, but not through stone, bronze or sheep.', 'Bronze targets work the cave\'s old mechanisms. Strike them.'] },
   chest_cyclops: { name: "Polyphemus' hoard", lines: ['Cheeses, fleeces, wine jars... and a flask of ambrosia, hidden from his own flock.'] },
