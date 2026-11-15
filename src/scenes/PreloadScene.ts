@@ -27,6 +27,8 @@ export class PreloadScene extends Phaser.Scene {
     this.load.image('cave_bg', 'assets/greek/cave_bg.png');
     // ship of Odysseus (tools/make_ship.py): 4 frames of 128x84, waterline at y=66
     this.load.spritesheet('ship', 'assets/props/ship.png', { frameWidth: 128, frameHeight: 84 });
+    // the upgraded ship (prize for escaping Telepylus): crimson sail, bronze hull (tools/make_ship_upgrade.py)
+    this.load.spritesheet('ship_bronze', 'assets/props/ship_bronze.png', { frameWidth: 128, frameHeight: 84 });
     // wooden horse statue on the beach (tools/make_horse_statue.py)
     this.load.image('horse_statue', 'assets/props/horse_statue.png');
     // stone head of Polyphemus on the small south-east islet (tools/make_cyclops_head.py)
@@ -56,6 +58,7 @@ export class PreloadScene extends Phaser.Scene {
     this.anims.create({ key: 'witch_statue-idle', frames: this.anims.generateFrameNumbers('witch_statue', { start: 0, end: 1 }), frameRate: 1.5, repeat: -1 });
     this.anims.create({ key: 'cyclops_head-idle', frames: this.anims.generateFrameNumbers('cyclops_head', { frames: [1, 2] }), frameRate: 1.2, repeat: -1 });
     this.anims.create({ key: 'ship-idle', frames: this.anims.generateFrameNumbers('ship', { start: 0, end: 3 }), frameRate: 4, repeat: -1 });
+    this.anims.create({ key: 'ship_bronze-idle', frames: this.anims.generateFrameNumbers('ship_bronze', { start: 0, end: 3 }), frameRate: 4, repeat: -1 });
     // idle loop for every animated Greek enemy (frames 0-1), used on the map and in battle
     for (const k of Object.keys(GREEK_SHEETS)) {
       if (k === 'gk_fx' || k === 'gk_odysseus') continue;

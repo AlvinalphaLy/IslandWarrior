@@ -33,10 +33,11 @@ export class Ship {
   private gh: number;
   private nextWake = 0;
 
-  constructor(private scene: Phaser.Scene, x: number, y: number, waterRects: Rect[], private worldW: number, private worldH: number) {
+  /** `skin`: the sprite sheet ('ship', or 'ship_bronze' once upgraded); its idle anim is `<skin>-idle` */
+  constructor(private scene: Phaser.Scene, x: number, y: number, waterRects: Rect[], private worldW: number, private worldH: number, skin = 'ship') {
     this.pos = new Phaser.Math.Vector2(x, y);
-    this.sprite = scene.add.sprite(x, y, 'ship', 0).setOrigin(0.5, WATERLINE / FRAME_H).setDepth(y);
-    this.sprite.play('ship-idle');
+    this.sprite = scene.add.sprite(x, y, skin, 0).setOrigin(0.5, WATERLINE / FRAME_H).setDepth(y);
+    this.sprite.play(`${skin}-idle`);
     this.gw = Math.ceil(worldW / CELL);
     this.gh = Math.ceil(worldH / CELL);
     this.water = new Uint8Array(this.gw * this.gh);

@@ -39,6 +39,7 @@ export class Harbor {
   private last = new Phaser.Math.Vector2();
   private vel = new Phaser.Math.Vector2();
   private over = false;
+  private upgraded = false;
   private readonly scene: Phaser.Scene;
 
   constructor(private host: HarborHost, spawns: GiantSpawn[]) {
@@ -50,7 +51,9 @@ export class Harbor {
     }
     this.last.copy(host.ship.pos);
     // the crew rows for their lives: much faster than at home, and quick to turn, so a change of course dodges
-    host.ship.maxSpeed = SHIP_SPEED;
+    // the bronze-hulled ship (prize for a first escape) rows faster still and shrugs off half the damage
+    this.upgraded = ((scene.registry.get('shipLevel') as number | undefined) ?? 0) > 0;
+    host.ship.maxSpeed = SHIP_SPEED * (this.upgraded ? 1.15 : 1);
     host.ship.accel = SHIP_ACCEL;
   }
 
@@ -118,7 +121,8 @@ export class Harbor {
   private hit() {
     const s = this.scene;
     const st: PlayerStats = { ...START_STATS, ...(s.registry.get('stats') as PlayerStats | undefined) };
-    st.hp = Math.max(0, st.hp - HULL_DAMAGE);
+    const dmg = this.upgraded ? Math.ceil(HULL_DAMAGE / 2) : HULL_DAMAGE;
+    st.hp = Math.max(0, st.hp - dmg);
     s.registry.set('stats', st);
     updateHud(st);
     s.cameras.main.shake(260, 0.008);
@@ -130,7 +134,7 @@ export class Harbor {
       toast('The ship breaks apart under the boulders...', 2600);
       s.time.delayedCall(900, () => this.host.leave(false));
     } else {
-      toast(`A boulder smashes into the hull! -${HULL_DAMAGE} HP`, 1500);
+      toast(this.upgraded ? `The bronze hull takes the blow! -${dmg} HP` : `A boulder smashes into the hull! -${dmg} HP`, 1500);
     }
   }
 

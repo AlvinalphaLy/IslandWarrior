@@ -75,6 +75,15 @@ const CHALLENGES: Record<string, { name: string; boss: string; chest: string; de
 };
 /** how long the VICTORY banner shows before the trip back to the island (ms) */
 const VICTORY_MS = 4200;
+/**
+ * What each challenge gives the first time it is won (on top of its hoard, and the full heal every win gives):
+ *   wine  Maron's wine, the Cyclops' undoing: max HP +WINE_HP for good
+ *   ship  the black ship rebuilt with a bronze hull and a crimson war sail: faster on every map, and in the
+ *         Laestrygonian harbour faster still and taking half damage (registry `shipLevel`)
+ *   skin  a new player skin (Circe's grotto: waiting on the design doc)
+ */
+const PRIZES: Record<string, 'wine' | 'ship' | 'skin'> = { cyclops: 'wine', telepylus: 'ship', circe: 'skin' };
+const WINE_HP = 10;
 
 export class MapScene extends Phaser.Scene {
   private raw!: TiledMap;
@@ -235,9 +244,26 @@ export class MapScene extends Phaser.Scene {
     this.player.frozen = true;
     this.player.move(0, 0);
     if (this.dialog) { this.dialog = null; this.renderDialog(); }
-    this.registry.set('challengesWon', [...new Set([...((this.registry.get('challengesWon') as string[] | undefined) ?? []), this.scene.key])]);
+    const won = (this.registry.get('challengesWon') as string[] | undefined) ?? [];
+    const first = !won.includes(this.scene.key);
+    this.registry.set('challengesWon', [...won, ...(first ? [this.scene.key] : [])]);
+    const lines = [...rewards];
+    const st = this.stats;
+    const prize = PRIZES[this.scene.key];
+    if (first && prize === 'wine') {
+      st.maxHp += WINE_HP;
+      lines.push(`Prize: Maron's wine! Max HP +${WINE_HP} (now ${st.maxHp})`);
+    } else if (first && prize === 'ship') {
+      this.registry.set('shipLevel', Math.max(1, (this.registry.get('shipLevel') as number | undefined) ?? 0));
+      lines.push('Prize: your ship is rebuilt with a bronze hull and a crimson sail: faster, and boulders do half damage');
+    }
+    // every win: back to full health
+    st.hp = st.maxHp;
+    this.registry.set('stats', st);
+    updateHud(st);
+    if (!lines.some((l) => /HP fully restored/.test(l))) lines.push('HP fully restored');
     this.cameras.main.flash(500, 255, 224, 140);
-    showVictory(name, rewards, VICTORY_MS);
+    showVictory(name, lines, VICTORY_MS);
     this.time.delayedCall(VICTORY_MS, () => { hideVictory(); then(); });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, hideVictory);
   }
@@ -338,7 +364,9 @@ export class MapScene extends Phaser.Scene {
         const water = this.layer('Collision').filter((r) => r.type === 'water');
         const b = this.physics.world.bounds;
         const keep = saved && !fromVoyage;
-        this.ship = new Ship(this, keep ? saved.x : s.x, keep ? saved.y : s.y, water, b.width, b.height);
+        const upgraded = ((this.registry.get('shipLevel') as number | undefined) ?? 0) > 0;
+        this.ship = new Ship(this, keep ? saved.x : s.x, keep ? saved.y : s.y, water, b.width, b.height, upgraded ? 'ship_bronze' : 'ship');
+        if (upgraded) this.ship.maxSpeed *= 1.25;   // the bronze hull (prize for escaping Telepylus)
         if (keep) this.ship.facingLeft = saved.left;
         // talkRect is the strip of shore you board from, kept relative to the mooring so it moves with the ship
         const r = prop(s, 'talkRect', '').split(',').map(Number);
