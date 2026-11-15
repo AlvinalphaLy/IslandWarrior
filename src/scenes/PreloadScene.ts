@@ -29,6 +29,8 @@ export class PreloadScene extends Phaser.Scene {
     this.load.spritesheet('ship', 'assets/props/ship.png', { frameWidth: 128, frameHeight: 84 });
     // the upgraded ship (prize for escaping Telepylus): crimson sail, bronze hull (tools/make_ship_upgrade.py)
     this.load.spritesheet('ship_bronze', 'assets/props/ship_bronze.png', { frameWidth: 128, frameHeight: 84 });
+    // the campfire put out by the night storm's rain (tools/make_campfire_out.py)
+    this.load.image('campfire_out', 'assets/tilesets/campfire_out.png');
     // wooden horse statue on the beach (tools/make_horse_statue.py)
     this.load.image('horse_statue', 'assets/props/horse_statue.png');
     // stone head of Polyphemus on the small south-east islet (tools/make_cyclops_head.py)

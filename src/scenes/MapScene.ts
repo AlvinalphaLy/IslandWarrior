@@ -90,6 +90,9 @@ export class MapScene extends Phaser.Scene {
   private raw!: TiledMap;
   private player!: Player;
   private npcs: Npc[] = [];
+  /** the burning campfires on this map (the night storm puts them out) */
+  private campfires: Phaser.GameObjects.Sprite[] = [];
+  private smoke: Phaser.Time.TimerEvent | null = null;
   private walls!: Phaser.Physics.Arcade.StaticGroup;
   private interactables: Interactable[] = [];
   private portals: Portal[] = [];
@@ -136,6 +139,8 @@ export class MapScene extends Phaser.Scene {
   init(data: MapSceneData) {
     this.arrival = data ?? {};
     this.npcs = [];
+    this.campfires = [];
+    this.smoke = null;
     this.interactables = [];
     this.portals = [];
     this.animatedTiles = [];
@@ -191,10 +196,10 @@ export class MapScene extends Phaser.Scene {
     if (prop(this.raw, 'dark', false)) {
       this.vignette = this.add.image(0, 0, 'vignette').setOrigin(0).setScrollFactor(0).setDepth(9000).setDisplaySize(cam.width, cam.height);
     }
-    // the night storm (outdoors only: maps with `dark` are caves and grottos), lit by Odysseus' torch or the ship
-    this.weather = new Weather(this, !prop(this.raw, 'dark', false),
-      () => (this.sailing && this.ship ? { x: this.ship.pos.x, y: this.ship.pos.y } : { x: this.player.x, y: this.player.y, facing: this.player.facing }));
+    // the night storm (outdoors only: maps with `dark` are caves and grottos), lit around the player or the ship
+    this.weather = new Weather(this, !prop(this.raw, 'dark', false), () => (this.sailing && this.ship ? this.ship.pos : this.player));
     setWeatherButton(this.weather.enabled);
+    this.applyNight(this.weather.enabled, false);
 
     this.debugGfx = this.add.graphics().setDepth(10000).setVisible(false);
     this.setupInput();
@@ -345,7 +350,7 @@ export class MapScene extends Phaser.Scene {
       if (o.gid & FLIP_D) img.setAngle(img.angle + 90).setFlipX(!img.flipX);
       const sortY = prop(o, 'sortY', -1), z = prop(o, 'z', 0);
       img.setDepth(sortY < 0 ? -500 + z * 1e-4 : sortY + z * 1e-5);
-      if (key === 'campfire') img.play('campfire');
+      if (key === 'campfire') { img.play('campfire'); this.campfires.push(img); }
     }
   }
 
@@ -545,7 +550,49 @@ export class MapScene extends Phaser.Scene {
     if (!this.weather || this.leaving) return;
     const night = this.weather.toggle();
     setWeatherButton(night);
-    toast(night ? 'Night falls. A storm rolls in over Ithaca...' : 'Dawn. The storm passes.', 2000);
+    this.applyNight(night, true);
+    toast(night ? 'Night falls. A storm rolls in, the fires hiss out and the villagers hurry indoors...'
+      : 'Dawn. The storm passes and the village wakes.', 2400);
+  }
+
+  /**
+   * What the night storm does to an outdoor map (caves and grottos keep their people and fires):
+   * the villagers go indoors (fade out; no talking, no collision) and the rain puts the campfires out (ash and a
+   * thin smoke). Day brings both back. `animate`: fade, rather than switch at once (on entering a map).
+   */
+  private applyNight(night: boolean, animate: boolean) {
+    if (prop(this.raw, 'dark', false)) return;
+    for (const n of this.npcs) {
+      const body = n.body as Phaser.Physics.Arcade.Body;
+      this.tweens.killTweensOf(n);
+      if (night) {
+        body.enable = false;
+        n.move(0, 0);
+        if (animate) this.tweens.add({ targets: n, alpha: 0, duration: 700, onComplete: () => n.setVisible(false) });
+        else n.setAlpha(0).setVisible(false);
+      } else {
+        body.enable = true;
+        n.setVisible(true);
+        if (animate) this.tweens.add({ targets: n, alpha: { from: 0, to: 1 }, duration: 700 });
+        else n.setAlpha(1);
+      }
+    }
+    for (const c of this.campfires) {
+      if (night) c.stop().setTexture('campfire_out');
+      else c.setTexture('campfire_ss', 0).play('campfire');
+    }
+    this.smoke?.remove();
+    this.smoke = null;
+    if (night && this.campfires.length) {
+      // a thin wisp now and then from the doused embers
+      this.smoke = this.time.addEvent({ delay: 650, loop: true, callback: () => {
+        for (const c of this.campfires) {
+          const w = this.add.circle(c.x + Phaser.Math.Between(-2, 2), c.y - 3, Phaser.Math.Between(1, 2), 0x9a96a0, 0.55).setDepth(c.depth + 1);
+          this.tweens.add({ targets: w, y: w.y - Phaser.Math.Between(10, 18), x: w.x + Phaser.Math.Between(2, 7), scale: 2.4, alpha: 0,
+            duration: Phaser.Math.Between(1100, 1600), onComplete: () => w.destroy() });
+        }
+      } });
+    }
   }
 
   /** Open a dialog by key (used by Archery for the bow). */
@@ -602,6 +649,7 @@ export class MapScene extends Phaser.Scene {
     let best: Interactable | null = null;
     let bestD = 14;
     for (const it of this.interactables) {
+      if (it.npc && !it.npc.visible) continue;   // gone indoors for the night
       if (it.npc) it.rect.setTo(it.npc.x - 8, it.npc.y - 16, 16, 16);
       if (it === this.shipIt && this.ship) {
         // board from the shore strip, or from right next to the hull (after landing somewhere else)

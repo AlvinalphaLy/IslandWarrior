@@ -1,11 +1,9 @@
 import Phaser from 'phaser';
-import type { Dir } from './Character';
 
 /**
  * Night storm: the Night/Day button (or N) turns outdoor maps to night with wind, rain and lightning.
  *
- *   night      a deep-blue darkness over the screen; Odysseus carries a flickering torch whose warm light is the
- *              only clear patch (while sailing the torch is stowed and the ship's lantern lights the deck)
+ *   night      a deep-blue darkness over the screen with a soft pool of light around the player (or the ship)
  *   rain       wind-slanted streaks over the whole view, and small splashes on the ground
  *   wind       gusts that bend the rain further and blow faint spray streaks across the screen
  *   lightning  every 6-14 s a jagged bolt and a white flash (the darkness lifts for an instant), thunder after
@@ -15,11 +13,7 @@ import type { Dir } from './Character';
  * The on/off state lives in the registry (`night`) so it carries across maps, and in localStorage between visits.
  */
 const DEPTH = 8000;
-const LIGHT_R = 50;           // radius of the clear pool of torchlight (px)
-/** where the torch sits, relative to the player's feet, per facing: [x, y, drawn behind the body] */
-const TORCH_HAND: Record<Dir, [number, number, boolean]> = {
-  down: [6, -8, false], up: [-6, -10, true], left: [-6, -9, false], right: [6, -9, false],
-};
+const LIGHT_R = 46;           // radius of the clear pool of light around the player (px)
 const DARK = 0.8;             // how dark the night is outside that pool (alpha)
 const STORE_KEY = 'islandwarrior.night';
 
@@ -40,18 +34,9 @@ export class Weather {
   private nextSplash = 0;
   private wind = 0.35;          // rain slant: horizontal speed per unit of fall speed
   private windTarget = 0.35;
-  private torch: Phaser.GameObjects.Sprite | null = null;
-  private glow: Phaser.GameObjects.Image | null = null;
-  private nextEmber = 0;
-  private nextFlicker = 0;
-  private flicker = 1;
-  private jitter = new Phaser.Math.Vector2();
 
-  /**
-   * `focus`: who carries the light: the player's feet and facing (the torch goes in their hand), or the ship's
-   * position with no facing while sailing (its lantern). `outdoor`: rain falls here.
-   */
-  constructor(private scene: Phaser.Scene, private outdoor: boolean, private focus: () => { x: number; y: number; facing?: Dir }) {
+  /** `focus`: the point the light follows (the player, or the ship while sailing). `outdoor`: rain falls here. */
+  constructor(private scene: Phaser.Scene, private outdoor: boolean, private focus: () => { x: number; y: number }) {
     this.makeTextures();
     if (scene.registry.get('night') === undefined) scene.registry.set('night', nightSaved());
     this.set(!!scene.registry.get('night'));
@@ -89,38 +74,6 @@ export class Weather {
       ctx.fillRect(0, 0, S, S);
       c.refresh();
     }
-    if (!tx.exists('torch_glow')) {
-      // the warm orange of firelight, laid over the clear patch
-      const S = 256, c = tx.createCanvas('torch_glow', S, S)!, ctx = c.getContext();
-      const g = ctx.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, LIGHT_R * 1.9);
-      g.addColorStop(0, 'rgba(255,170,70,0.30)');
-      g.addColorStop(0.5, 'rgba(255,130,40,0.16)');
-      g.addColorStop(1, 'rgba(255,110,30,0)');
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, S, S);
-      c.refresh();
-    }
-    if (!tx.exists('torch')) {
-      // 3 frames of 5x12: a wooden stick with a wrapped head, and a flame that dances
-      const c = tx.createCanvas('torch', 15, 12)!, ctx = c.getContext();
-      const px = (x: number, y: number, col: string) => { ctx.fillStyle = col; ctx.fillRect(x, y, 1, 1); };
-      const flames = [
-        ['..y..', '.yoy.', '.oWo.', 'roWor'],
-        ['.y...', '.oy..', 'yoWo.', 'roWor'],
-        ['...y.', '..yo.', '.oWoy', 'roWor'],
-      ];
-      const col: Record<string, string> = { y: '#ffd25a', o: '#ff8a2a', r: '#d8401c', W: '#fff6c8' };
-      flames.forEach((rows, f) => {
-        rows.forEach((row, y) => [...row].forEach((ch, x) => { if (ch !== '.') px(f * 5 + x, y, col[ch]); }));
-        for (let y = 4; y < 6; y++) for (let x = 1; x < 4; x++) px(f * 5 + x, y, '#5a3a22');   // wrapped head
-        for (let y = 6; y < 12; y++) { px(f * 5 + 2, y, '#8a5a32'); px(f * 5 + 3, y, '#5a3a22'); }   // stick
-        c.add(f, 0, f * 5, 0, 5, 12);
-      });
-      c.refresh();
-    }
-    if (!this.scene.anims.exists('torch-burn')) {
-      this.scene.anims.create({ key: 'torch-burn', frames: [0, 1, 2, 1].map((frame) => ({ key: 'torch', frame })), frameRate: 9, repeat: -1 });
-    }
     if (!tx.exists('rain_drop')) {
       const c = tx.createCanvas('rain_drop', 1, 7)!, ctx = c.getContext();
       const g = ctx.createLinearGradient(0, 0, 0, 7);
@@ -147,8 +100,6 @@ export class Weather {
     if (this.dark) return;
     const s = this.scene, cam = s.cameras.main;
     this.dark = s.add.image(0, 0, 'night_dark').setScrollFactor(0).setDepth(DEPTH);
-    this.glow = s.add.image(0, 0, 'torch_glow').setScrollFactor(0).setDepth(DEPTH + 0.5);
-    this.torch = s.add.sprite(0, 0, 'torch', 0).setOrigin(0.5, 1).play('torch-burn');
     // rain: spawned along the top edge and (for the slant) the upwind side, falling across the whole view
     this.rain = s.add.particles(0, 0, 'rain_drop', {
       x: { min: -cam.width * 0.5, max: cam.width * 1.1 }, y: { min: -20, max: -4 },
@@ -165,8 +116,6 @@ export class Weather {
 
   private stop() {
     this.dark?.destroy(); this.dark = null;
-    this.glow?.destroy(); this.glow = null;
-    this.torch?.destroy(); this.torch = null;
     this.rain?.destroy(); this.rain = null;
     this.bolt?.destroy(); this.bolt = null;
   }
@@ -175,33 +124,11 @@ export class Weather {
   update(time: number) {
     if (!this.on || !this.outdoor || !this.dark) return;
     const s = this.scene, cam = s.cameras.main;
-    // the light comes from the torch in Odysseus' hand (or the ship's lantern while sailing), and it flickers
+    // the light follows the player/ship (screen space; in the M overview it just stays centred)
     const f = this.focus();
-    const sailing = !f.facing;
-    let lx = f.x, ly = f.y - 12;
-    if (this.torch) {
-      this.torch.setVisible(!sailing);
-      if (!sailing) {
-        const [ox, oy, behind] = TORCH_HAND[f.facing!];
-        this.torch.setPosition(Math.round(f.x + ox), Math.round(f.y + oy)).setDepth(f.y + (behind ? -0.5 : 0.5));
-        lx = this.torch.x; ly = this.torch.y - 9;   // the flame
-        if (time > this.nextEmber) {
-          this.nextEmber = time + Phaser.Math.Between(90, 200);
-          const e = s.add.rectangle(lx + Phaser.Math.Between(-1, 1), ly - 2, 1, 1, Math.random() < 0.5 ? 0xffd25a : 0xff8a2a).setDepth(f.y + 1);
-          s.tweens.add({ targets: e, x: e.x + this.wind * 14 + Phaser.Math.Between(-3, 3), y: e.y - Phaser.Math.Between(8, 16), alpha: 0,
-            duration: Phaser.Math.Between(400, 700), onComplete: () => e.destroy() });
-        }
-      }
-    }
-    if (time > this.nextFlicker) {
-      this.nextFlicker = time + Phaser.Math.Between(60, 120);
-      this.flicker = Phaser.Math.FloatBetween(0.94, 1.06);
-      this.jitter.set(Phaser.Math.FloatBetween(-1, 1), Phaser.Math.FloatBetween(-1, 1));
-    }
-    const sx = cam.zoom === 1 ? lx - cam.scrollX + this.jitter.x : cam.width / 2;
-    const sy = cam.zoom === 1 ? ly - cam.scrollY + this.jitter.y : cam.height / 2;
-    this.dark.setPosition(sx, sy).setScale(this.flicker);
-    this.glow?.setPosition(sx, sy).setScale(this.flicker).setAlpha(0.85 + (this.flicker - 1) * 3);
+    const sx = cam.zoom === 1 ? f.x - cam.scrollX : cam.width / 2;
+    const sy = cam.zoom === 1 ? f.y - 12 - cam.scrollY : cam.height / 2;
+    this.dark.setPosition(sx, sy);
     // wind: ease toward a target slant; gusts now and then, with spray streaks blown across the view
     this.wind += (this.windTarget - this.wind) * 0.02;
     if (time > this.nextGust) {
@@ -256,7 +183,6 @@ export class Weather {
     draw(5, 0x9fb8ff, 0.35); draw(2, 0xffffff, 1);
     cam.flash(160, 230, 236, 255);
     this.dark?.setAlpha(0.15);
-    this.glow?.setAlpha(0.2);
     s.time.delayedCall(90, () => g.clear());
     s.time.delayedCall(140, () => { draw(2, 0xffffff, 0.8); this.dark?.setAlpha(0.5); });
     s.time.delayedCall(220, () => { g.clear(); this.dark?.setAlpha(1); });
