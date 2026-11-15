@@ -25,8 +25,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     const w = def.boss ? 40 : 14;
     body.setSize(w, 8);
     body.setOffset((this.width - w) / 2, this.height - 10);
-    body.setImmovable(true);
-    body.pushable = false;
+    body.pushable = false; // not immovable: immovable bodies pass through static walls in Arcade physics
     if (animated) {
       this.play({ key: `${def.sprite}-idle`, startFrame: Math.random() < 0.5 ? 0 : 1 });
       return;

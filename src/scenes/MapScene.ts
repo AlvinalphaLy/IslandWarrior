@@ -5,6 +5,7 @@ import { PLAYER_SKINS } from '../entities/Character';
 import { dialogFor, DialogEntry } from '../data/dialog';
 import { touch, setActionHandler, showDialog, toast, updateHud } from '../ui';
 import { Enemy } from '../entities/Enemy';
+import { Ship } from '../entities/Ship';
 import { CHEST_REWARDS, ENEMIES, PlayerStats, START_STATS } from '../data/enemies';
 import type { BattleData, BattleResult } from './BattleScene';
 
@@ -62,6 +63,12 @@ export class MapScene extends Phaser.Scene {
   /** ship name -> where the player lands when sailing back to this map */
   private shipLandings: Record<string, Phaser.Math.Vector2> = {};
   private vignette: Phaser.GameObjects.Image | null = null;
+  /** the sailable ship (village only), its interactable, and the talk area relative to its waterline centre */
+  private ship: Ship | null = null;
+  private shipIt: Interactable | null = null;
+  private shipTalk = new Phaser.Geom.Rectangle();
+  private sailing = false;
+  private edgeToastAt = 0;
   private inBattle = false;
   /** the player can't start another battle until this time (after running away) */
   private safeUntil = 0;
@@ -82,6 +89,9 @@ export class MapScene extends Phaser.Scene {
     this.leaving = false;
     this.enemies = [];
     this.shipLandings = {};
+    this.ship = null;
+    this.shipIt = null;
+    this.sailing = false;
     this.vignette = null;
     this.inBattle = false;
     this.safeUntil = 0;
@@ -91,7 +101,9 @@ export class MapScene extends Phaser.Scene {
     this.raw = this.cache.tilemap.get(this.scene.key).data as TiledMap;
     const map = this.make.tilemap({ key: this.scene.key });
     const tilesets = this.raw.tilesets.map((t) => map.addTilesetImage(t.name, t.name)!);
-    ['Ground0', 'Ground1', 'Ground2'].forEach((name, i) => map.createLayer(name, tilesets, 0, 0)?.setDepth(-1000 + i));
+    // Ground0..2 come from the tile reconstruction; Ground3 (village only) holds the patch that makes it pixel-exact
+    this.raw.layers.filter((l) => l.type === 'tilelayer' && l.name.startsWith('Ground'))
+      .forEach((l, i) => map.createLayer(l.name, tilesets, 0, 0)?.setDepth(-1000 + i));
     this.physics.world.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
 
     this.setupTileAnimations(map);
@@ -192,20 +204,32 @@ export class MapScene extends Phaser.Scene {
         const defeated = (this.registry.get('defeated') as string[] | undefined) ?? [];
         if (ENEMIES[id] && !defeated.includes(`${this.scene.key}:${s.name}`)) this.enemies.push(new Enemy(this, s.x, s.y, id, s.name));
       } else if (s.type === 'ship') {
-        // a moored ship: (x, y) is the waterline centre; it bobs and can be talked to from the shore
-        const WATERLINE = 66;
-        const ship = this.add.sprite(s.x, s.y, 'ship', 0).setOrigin(0.5, WATERLINE / 84).setDepth(s.y);
-        ship.play('ship-idle');
-        this.tweens.add({ targets: ship, y: s.y + 1, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+        // the black ship: (x, y) is its mooring (waterline centre). Board it from the shore, sail it, land anywhere.
+        // Where it was left is remembered; coming home from a voyage puts it back at the mooring.
+        const saved = (this.registry.get('ships') as Record<string, { x: number; y: number; left: boolean }> | undefined)?.[`${this.scene.key}:${s.name}`];
+        const fromVoyage = this.arrival.from === s.name;
+        const water = this.layer('Collision').filter((r) => r.type === 'water');
+        const b = this.physics.world.bounds;
+        const keep = saved && !fromVoyage;
+        this.ship = new Ship(this, keep ? saved.x : s.x, keep ? saved.y : s.y, water, b.width, b.height);
+        if (keep) this.ship.facingLeft = saved.left;
+        // talkRect is the strip of shore you board from, kept relative to the mooring so it moves with the ship
         const r = prop(s, 'talkRect', '').split(',').map(Number);
-        if (r.length === 4) {
-          this.interactables.push({
-            kind: 'ship', rect: new Phaser.Geom.Rectangle(r[0], r[1], r[2], r[3]), dialog: prop(s, 'dialog', ''), id: s.name,
-            target: prop(s, 'target', ''), requires: prop(s, 'requires', ''),
-          });
-        }
+        if (r.length === 4) this.shipTalk.setTo(r[0] - s.x, r[1] - s.y, r[2], r[3]);
+        this.shipIt = {
+          kind: 'ship', rect: new Phaser.Geom.Rectangle(), dialog: prop(s, 'dialog', ''), id: s.name,
+          target: prop(s, 'target', ''), requires: prop(s, 'requires', ''),
+        };
+        this.interactables.push(this.shipIt);
         const a = prop(s, 'arrive', '').split(',').map(Number);
         if (a.length === 2) this.shipLandings[s.name] = new Phaser.Math.Vector2(a[0], a[1]);
+      } else if (s.type === 'statue') {
+        // a prop image standing on (x, y) = bottom centre of its base; the base blocks movement and can be read with E
+        const fw = prop(s, 'footW', 28), fh = prop(s, 'footH', 8);
+        this.add.image(s.x, s.y, prop(s, 'sprite', 'horse_statue')).setOrigin(0.5, 1).setDepth(s.y - fh / 2);
+        this.walls.add(this.add.zone(s.x, s.y - 1 - fh / 2, fw, fh));
+        const dialog = prop(s, 'dialog', '');
+        if (dialog) this.interactables.push({ kind: 'sign', rect: new Phaser.Geom.Rectangle(s.x - fw / 2, s.y - fh - 1, fw, fh + 1), dialog, id: s.name });
       } else if (s.type === 'sign' || s.type === 'chest') {
         this.interactables.push({ kind: s.type, rect, dialog: prop(s, 'dialog', ''), id: s.name });
       } else if (s.type === 'door' || s.type === 'exit') {
@@ -279,11 +303,20 @@ export class MapScene extends Phaser.Scene {
     const kb = this.input.keyboard!;
     this.keys = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT') as Record<string, Phaser.Input.Keyboard.Key>;
     kb.addCapture('F1');
-    // plugin-level listeners are removed automatically when the scene shuts down
-    for (const k of ['E', 'SPACE', 'ENTER']) kb.on(`keydown-${k}`, () => this.interact());
-    kb.on('keydown-M', () => this.toggleOverview());
-    kb.on('keydown-C', () => this.cycleSkin());
-    kb.on('keydown-F1', () => { this.debugOn = !this.debugOn; this.debugGfx.setVisible(this.debugOn); });
+    // The keyboard plugin keeps its listeners when the scene restarts (every trip through a door), so remove them on
+    // shutdown. Otherwise each return to a map adds another set and one key press acts twice.
+    const binds: [string, () => void][] = [
+      ['keydown-E', () => this.interact()], ['keydown-SPACE', () => this.interact()], ['keydown-ENTER', () => this.interact()],
+      ['keydown-M', () => this.toggleOverview()],
+      ['keydown-C', () => this.cycleSkin()],
+      ['keydown-F1', () => { this.debugOn = !this.debugOn; this.debugGfx.setVisible(this.debugOn); }],
+    ];
+    // After a restart Phaser 3.80's keyboard plugin can also deliver the same DOM event twice, so act once per event
+    // (otherwise E boards the ship and immediately steps off again, or skips a dialog line).
+    let lastEvent: KeyboardEvent | null = null;
+    const handlers = binds.map(([ev, fn]) => [ev, (e: KeyboardEvent) => { if (e === lastEvent) return; lastEvent = e; fn(); }] as const);
+    for (const [ev, fn] of handlers) kb.on(ev, fn);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { for (const [ev, fn] of handlers) kb.off(ev, fn); });
     setActionHandler(() => this.interact());
   }
 
@@ -308,18 +341,25 @@ export class MapScene extends Phaser.Scene {
       cam.centerOn(b.centerX, b.centerY);
     } else {
       cam.setZoom(1);
-      cam.startFollow(this.player, true, 0.15, 0.15);
+      cam.startFollow(this.sailing && this.ship ? this.ship.sprite : this.player, true, 0.15, 0.15);
     }
   }
 
   private interact() {
     if (this.leaving) return;
     if (this.dialog) return this.advanceDialog();
+    if (this.sailing) return this.goAshore();
     const p = this.player.probe;
     let best: Interactable | null = null;
     let bestD = 14;
     for (const it of this.interactables) {
       if (it.npc) it.rect.setTo(it.npc.x - 8, it.npc.y - 16, 16, 16);
+      if (it === this.shipIt && this.ship) {
+        // board from the shore strip, or from right next to the hull (after landing somewhere else)
+        const h = this.ship.hull;
+        const t = new Phaser.Geom.Rectangle(this.ship.pos.x + this.shipTalk.x, this.ship.pos.y + this.shipTalk.y, this.shipTalk.width, this.shipTalk.height);
+        Phaser.Geom.Rectangle.Union(h, t, it.rect);
+      }
       const d = Phaser.Math.Distance.Between(p.x, p.y, Phaser.Math.Clamp(p.x, it.rect.left, it.rect.right), Phaser.Math.Clamp(p.y, it.rect.top, it.rect.bottom));
       if (d < bestD) { bestD = d; best = it; }
     }
@@ -345,21 +385,86 @@ export class MapScene extends Phaser.Scene {
         }
       }
     }
-    let onClose: (() => void) | undefined;
-    if (best.kind === 'ship') {
-      const ship = best;
-      const unlocks = (this.registry.get('unlocks') as string[] | undefined) ?? [];
-      const unlocked = !ship.requires || unlocks.includes(ship.requires);
-      const ready = unlocked && !!ship.target && !!this.scene.get(ship.target);
-      entry = dialogFor(`${ship.dialog}_${ready ? 'sail' : unlocked ? 'soon' : 'locked'}`);
-      if (ready) onClose = () => this.sail(ship);
-    }
-    this.dialog = { entry, line: 0, target: best, onClose };
+    if (best.kind === 'ship') return this.board();
+    this.dialog = { entry, line: 0, target: best };
     this.player.frozen = true;
     this.renderDialog();
   }
 
-  /** Board the ship and sail to its target scene; exits there bring the player back to this shore. */
+  // ---------------------------------------------------------------- the ship
+  /** Climb aboard: the player goes onto the deck and the arrow keys steer the ship. */
+  private board() {
+    if (!this.ship) return;
+    this.sailing = true;
+    this.player.frozen = true;
+    this.player.move(0, 0);
+    this.player.setVisible(false);
+    (this.player.body as Phaser.Physics.Arcade.Body).enable = false;
+    if (!this.overview) this.cameras.main.startFollow(this.ship.sprite, true, 0.08, 0.08);
+    toast(dialogFor('ship_board').lines[0], 3200);
+  }
+
+  /** Step off onto the nearest bit of land next to the hull. */
+  private goAshore() {
+    const ship = this.ship;
+    if (!ship) return;
+    const spot = this.landingSpot();
+    if (!spot) return toast(dialogFor('ship_noland').lines[0], 2200);
+    this.sailing = false;
+    const body = this.player.body as Phaser.Physics.Arcade.Body;
+    body.enable = true;
+    this.player.setPosition(spot.x, spot.y);
+    body.reset(spot.x, spot.y);
+    this.player.setPosition(spot.x, spot.y);
+    this.player.setVisible(true);
+    this.player.frozen = false;
+    // face away from the ship, onto the land
+    const dx = spot.x - ship.pos.x, dy = spot.y - ship.pos.y;
+    this.player.face(Math.abs(dy) * 2 > Math.abs(dx) ? (dy < 0 ? 'up' : 'down') : dx < 0 ? 'left' : 'right');
+    if (!this.overview) this.cameras.main.startFollow(this.player, true, 0.15, 0.15);
+    const ships = (this.registry.get('ships') as Record<string, unknown> | undefined) ?? {};
+    this.registry.set('ships', { ...ships, [`${this.scene.key}:${this.shipIt!.id}`]: { x: ship.pos.x, y: ship.pos.y, left: ship.facingLeft } });
+  }
+
+  /** Nearest point within reach of the hull where the player's feet fit on open ground. */
+  private landingSpot(): Phaser.Math.Vector2 | null {
+    const h = this.ship!.hull;
+    const reach = 40; // the mooring sits ~26px off the sand; boarding works from as far away
+    const b = this.physics.world.bounds;
+    const near = this.layer('Collision').filter((r) => r.x < h.right + reach + 8 && r.x + r.width > h.x - reach - 8 && r.y < h.bottom + reach + 8 && r.y + r.height > h.y - reach - 8);
+    let best: Phaser.Math.Vector2 | null = null;
+    let bestD = Infinity;
+    for (let y = Math.floor(h.y - reach); y <= h.bottom + reach; y += 2) {
+      for (let x = Math.floor(h.x - reach); x <= h.right + reach; x += 2) {
+        if (x < 8 || x > b.width - 8 || y < 10 || y > b.height - 2) continue;
+        const d = Phaser.Math.Distance.Between(x, y, Phaser.Math.Clamp(x, h.x, h.right), Phaser.Math.Clamp(y, h.y, h.bottom));
+        if (d > reach || d >= bestD) continue;
+        // the player's feet box (10x6, ending 1px above the feet) plus a 1px margin
+        const fx0 = x - 6, fx1 = x + 6, fy0 = y - 8, fy1 = y;
+        if (near.some((r) => fx0 < r.x + r.width && r.x < fx1 && fy0 < r.y + r.height && r.y < fy1)) continue;
+        bestD = d;
+        best = new Phaser.Math.Vector2(x, y);
+      }
+    }
+    return best;
+  }
+
+  /** Sailing off the south edge of the map is the voyage to the dragon's lair, once Achilles is beaten. */
+  private openSea() {
+    const it = this.shipIt;
+    if (!it || this.leaving) return;
+    const unlocks = (this.registry.get('unlocks') as string[] | undefined) ?? [];
+    const unlocked = !it.requires || unlocks.includes(it.requires);
+    if (unlocked && it.target && this.scene.get(it.target)) {
+      toast(dialogFor(`${it.dialog}_sail`).lines[0], 2400);
+      return this.sail(it);
+    }
+    if (this.time.now < this.edgeToastAt) return;
+    this.edgeToastAt = this.time.now + 3500;
+    toast(dialogFor(unlocked ? 'ship_voyage_soon' : 'ship_voyage_locked').lines[0], 3200);
+  }
+
+  /** Sail to the ship's target scene; exits there bring the player back to this shore. */
   private sail(ship: Interactable) {
     this.leaving = true;
     this.player.frozen = true;
@@ -436,15 +541,25 @@ export class MapScene extends Phaser.Scene {
   // ---------------------------------------------------------------- loop
   update(time: number, delta: number) {
     const k = this.keys;
-    this.player.update({
+    const input = {
       up: k.W.isDown || k.UP.isDown || touch.up,
       down: k.S.isDown || k.DOWN.isDown || touch.down,
       left: k.A.isDown || k.LEFT.isDown || touch.left,
       right: k.D.isDown || k.RIGHT.isDown || touch.right,
-    });
+    };
+    const idle = { up: false, down: false, left: false, right: false };
+    const dt = Math.min(delta, 50) / 1000;
+    if (this.sailing && this.ship && !this.dialog && !this.leaving) {
+      if (this.ship.step(dt, input)) this.openSea();
+      this.player.update(idle);
+    } else {
+      this.ship?.step(dt, idle); // a moored or abandoned ship drifts to a stop
+      this.player.update(input);
+    }
+    this.ship?.update(time);
     for (const n of this.npcs) n.update(time, delta);
     for (const e of this.enemies) e.update(time, this.player);
-    this.checkPortals();
+    if (!this.sailing) this.checkPortals();
     if (this.debugOn) this.drawDebug();
   }
 

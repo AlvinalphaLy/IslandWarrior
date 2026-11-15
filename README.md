@@ -14,7 +14,7 @@ npm run dev        # http://localhost:5173
 | WASD / Arrows | Move |
 | E / Space / Enter | Talk to an NPC, read a sign, advance dialog |
 | Walk up into a house door | Red house (left, where you start) → **Telemachus training room** (sewer dungeon). Green fenced house (bottom-right) → **Fungus Cave**. The other four are locked until their dungeons exist. |
-| Talk to the black ship (stand on the beach shore, press E) | The dragon raid entry. It sails to the `lair` scene once `achilles` is in the registry's `unlocks`; until then the crew tells you to beat Achilles. |
+| Board the black ship (stand on the beach by it, press E) | Sail it with WASD / arrows: it only moves on open water, turns to face its heading and leaves a wake. Press E near any shore to step off; the ship stays where you left it. Sailing off the south edge of the map is the voyage to the `lair` scene, once `achilles` is in the registry's `unlocks`; until then the crew refuses. Coming home lands you on the beach with the ship back at its mooring. |
 | Walk up into a ladder | Climbs back out through the door you came in by |
 | Touch a monster (dungeon) | Starts a battle. **1–4** or the arrow keys + Enter choose Attack / Defend / Potion / Run. |
 | C | Change the player's skin: Adam → Zeus → Hermes → Hades → Heracles → Aphrodite |
@@ -37,11 +37,13 @@ The reference is an exact 2× upscale of 16px art, which works out to a 44×25 t
    - `Objects`: free-placed tile objects. Each has `sortY` (its depth-sort baseline) and `z` (its draw order in the reference).
    - `Collision`: rectangles for the water mask, tree trunks, house walls, fences and cliffs, and rocks, bushes and props.
    - `Spawns`: the player, NPCs (`sprite`, `dialog`, `wander` properties), doors and signs.
-3. **`tools/verify_map.py`**: re-renders `village.json` the same way the game does and diffs it against the reference. Current result: **95.7% pixel-identical**, not counting the open water, which animates in-game instead of matching the static waves. Outputs go to `cache/verify_*.png`.
+3. **`tools/patch_map.py`**: makes the map pixel-exact. Real tileset art covers about 95% of the map. The pixels that still differ (canopy overlaps in the dense forests, and the reference's non-repeating water waves) are copied from the reference into `public/assets/tilesets/patch.png`. Ground pixels go into a `Ground3` tile layer. Pixels on trees, houses and props become patch objects with the same `sortY` as the object they sit on, so depth sorting with characters still works. Water cells are copied whole, so the village shows the reference's static waves instead of the animated water. About 5% of the map's pixels are copied this way.
+4. **`tools/viking_houses.py`**: replaces the six houses with Viking longhouses drawn in code: shingled or turf roofs with crossed gable boards, plank walls, shields, iron-banded doors, stone foundations. Each house keeps its colour (rust-red, slate-blue, or a green turf roof), its footprint, its door position, its depth and its collision, so the doors and dungeons work as before. It also repaints the door-open animation (`tilesets/door.png`). Tiles go to `tilesets/viking.png`, and the house areas are saved in the map property `customArt`.
+5. **`tools/verify_map.py`**: re-renders `village.json` the same way the game does and diffs it against the reference, leaving out the `customArt` areas. Current result: **99.99% pixel-identical outside the Viking houses**, which cover 7.2% of the map. Outputs go to `cache/verify_*.png`.
 
 ```
 npm run map        # full rebuild (about 3 min): reconstruct, build, verify
-npm run map:build  # rebuild Tiled JSON + collision only
+npm run map:build  # rebuild Tiled JSON + collision + patch (skips the slow reconstruction)
 npm run compare    # verify only
 npm run map:cave   # rebuild the cave map
 npm run map:dungeon # rebuild the sewer dungeon
@@ -107,7 +109,7 @@ Cave characters use RPG Maker layout (3×4 frames of 16×32). `CHARACTER_SHEETS`
 
 ## Known gaps
 
-- The reference water's wave pattern isn't a repeating tile, so the game uses the pack's animated water instead.
-- About 4% of non-water pixels differ, mostly where tree canopies overlap in the dense forests. Trees partly hidden by other trees get approximate trunk collision.
+- The village water is static, copied from the reference. Its wave pattern isn't a repeating tile, so it can't use the pack's animated water and still match. The cave and dungeon are unaffected.
+- Trees partly hidden by other trees get approximate trunk collision.
 - Door destinations are set in `DOOR_TARGETS` in `tools/build_map.py`; houses not listed are locked. Run `npm run map:build` after changing it.
 - Fantasy Battlers is a free sample pack; its README asks you to consider buying the full asset. Check its license before any commercial use.

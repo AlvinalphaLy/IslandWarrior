@@ -77,14 +77,20 @@ export class BattleScene extends Phaser.Scene {
     this.time.delayedCall(450, () => this.foeIdle());
     this.time.delayedCall(900, () => this.playerTurn());
 
+    // This scene restarts for every battle. Remove the listeners on shutdown and act once per DOM event:
+    // Phaser 3.80's keyboard plugin can otherwise deliver one key press twice from the second battle on.
     const kb = this.input.keyboard!;
-    kb.on('keydown-ONE', () => this.choose('attack'));
-    kb.on('keydown-TWO', () => this.choose('defend'));
-    kb.on('keydown-THREE', () => this.choose('potion'));
-    kb.on('keydown-FOUR', () => this.choose('run'));
-    kb.on('keydown-LEFT', () => this.move(-1)); kb.on('keydown-UP', () => this.move(-1)); kb.on('keydown-A', () => this.move(-1)); kb.on('keydown-W', () => this.move(-1));
-    kb.on('keydown-RIGHT', () => this.move(1)); kb.on('keydown-DOWN', () => this.move(1)); kb.on('keydown-D', () => this.move(1)); kb.on('keydown-S', () => this.move(1));
-    for (const k of ['ENTER', 'SPACE', 'E']) kb.on(`keydown-${k}`, () => this.choose(COMMANDS[this.selected]));
+    const binds: [string, () => void][] = [
+      ['ONE', () => this.choose('attack')], ['TWO', () => this.choose('defend')],
+      ['THREE', () => this.choose('potion')], ['FOUR', () => this.choose('run')],
+      ...['LEFT', 'UP', 'A', 'W'].map((k) => [k, () => this.move(-1)] as [string, () => void]),
+      ...['RIGHT', 'DOWN', 'D', 'S'].map((k) => [k, () => this.move(1)] as [string, () => void]),
+      ...['ENTER', 'SPACE', 'E'].map((k) => [k, () => this.choose(COMMANDS[this.selected])] as [string, () => void]),
+    ];
+    let lastEvent: KeyboardEvent | null = null;
+    const handlers = binds.map(([k, fn]) => [`keydown-${k}`, (e: KeyboardEvent) => { if (e === lastEvent) return; lastEvent = e; fn(); }] as const);
+    for (const [ev, fn] of handlers) kb.on(ev, fn);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { for (const [ev, fn] of handlers) kb.off(ev, fn); });
   }
 
   private move(d: number) {

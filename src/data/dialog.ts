@@ -16,10 +16,13 @@ export const DIALOG: Record<string, DialogEntry> = {
   sign_3: { name: 'Sign', lines: ['Fishing spot. Patience required.'] },
   sign_4: { name: 'Sign', lines: ['Welcome to the island!'] },
   sign_5: { name: 'Sign', lines: ['Garden. Please keep off the flowers.'] },
+  horse_statue: { name: 'Wooden Horse', lines: ['A great horse carved from ship timber, rearing toward the sea.', 'The plaque reads: "Beware of Greeks bearing gifts."'] },
 
-  // the ship of Odysseus = the dragon raid entry (see `requires` / `target` on the ship in build_map.py)
-  ship_locked: { name: 'The black ship', lines: ["Odysseus' black ship rides at anchor, oars shipped, sail half full of wind.", "The crew won't row for an untested captain. Defeat Achilles, then sail to the dragon's lair."] },
-  ship_soon: { name: 'The black ship', lines: ['The crew salutes you, champion.', "But the Oracle has not yet shown them the way to the dragon's lair. (The lair is not built yet.)"] },
+  // the ship of Odysseus: board it from the shore and sail it; the south edge of the map is the voyage to the lair
+  ship_board: { name: 'The black ship', lines: ["All aboard! Arrows/WASD to sail, E to go ashore. The open sea to the south leads to the dragon's lair."] },
+  ship_noland: { name: 'The black ship', lines: ['No place to land here. Sail closer to the shore.'] },
+  ship_voyage_locked: { name: 'The black ship', lines: ["The crew won't row into the open sea for an untested captain. Defeat Achilles first."] },
+  ship_voyage_soon: { name: 'The black ship', lines: ["The Oracle has not yet shown the way to the dragon's lair."] },
   ship_sail: { name: 'The black ship', lines: ["The crew takes up the oars. Across the wine-dark sea to the dragon's lair!"] },
 
   // ---- cave (under every house) ----

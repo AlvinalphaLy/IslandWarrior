@@ -38,7 +38,7 @@ HOUSE_ROWS = [(399, 413), (418, 432), (437, 451), (456, 470), (475, 490), (494, 
 HOUSES = rng(*HOUSE_ROWS)
 WALLS = rng((133, 138), (152, 152), (157, 159), (171, 171), (176, 178), (190, 191), (194, 195),
             (252, 253), (270, 271), (289, 291), (308, 310), (327, 329), (551, 555))
-FLAT = rng((0, 132), (153, 156), (172, 175), (192, 193), (230, 234), (249, 249), (268, 268), (380, 382),
+FLAT = rng((0, 132), (153, 156), (172, 175), (192, 193), (230, 232), (234, 234), (249, 249), (268, 268), (380, 382),
            (414, 417), (433, 436), (452, 455), (471, 474), (491, 493), (510, 512), (529, 531), (548, 550),
            (566, 569), (585, 588), (604, 607))
 FRUIT = rng((414, 417), (433, 436), (452, 453), (471, 472))
@@ -261,10 +261,20 @@ rects = []
 # 1. water (4px sub-cells), bridges excluded
 water = color_mask(full, WATER_COLORS)
 walk_override = np.zeros((RH, RW), bool)
-for o in objs:
+def walk_on(x, y, sheet, tid, f=0):
+    # a bridge tile is walkable over the extent of its planks (opaque pixels), gaps between planks included
+    ys, xs = np.nonzero(tile_rgba(sheet, tid, f)[..., 3] > 127)
+    if len(ys):
+        y0, y1, x0, x1 = max(0, y + ys.min()), min(RH, y + ys.max() + 1), max(0, x + xs.min()), min(RW, x + xs.max() + 1)
+        walk_override[y0:y1, x0:x1] = True
+for o in objs:  # bridges placed as objects (the pier)
     if o['sheet'] == 'village' and o['id'] in BRIDGE:
-        x0, y0 = max(0, o['x']), max(0, o['y'])
-        walk_override[y0:min(RH, o['y'] + TS), x0:min(RW, o['x'] + TS)] = True
+        walk_on(o['x'], o['y'], o['sheet'], o['id'], o['f'])
+for cy in range(H):  # bridges in the ground layers (the plank bridge between the pond and the beach)
+    for cx in range(W):
+        for sh, tid in recon['ground'][cy][cx]:
+            if sh == 'village' and tid in BRIDGE:
+                walk_on(cx * TS, cy * TS, sh, tid)
 SUB = 4
 wg = (water.reshape(RH // SUB, SUB, RW // SUB, SUB).mean((1, 3)) >= 0.5) & \
      ~(walk_override.reshape(RH // SUB, SUB, RW // SUB, SUB).any((1, 3)))
@@ -332,6 +342,18 @@ for g, members in groups.items():
         if bb:
             rects.append((bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1], 'solid'))
 
+# the campfire and its two log seats: one solid block, so nobody slips into the gaps or stands inside a log
+fires = [o for o in objs if o['sheet'] == 'campfire']
+if fires:
+    fx0 = min(o['x'] for o in fires) - 20; fx1 = max(o['x'] for o in fires) + TS + 20
+    fy0 = min(o['y'] for o in fires) - 8; fy1 = max(o['y'] for o in fires) + TS + 4
+    seats = [r for r in rects if r[4] == 'solid' and r[0] < fx1 and r[0] + r[2] > fx0 and r[1] < fy1 and r[1] + r[3] > fy0]
+    if seats:
+        rects = [r for r in rects if r not in seats]
+        x0 = min(r[0] for r in seats); y0 = min(r[1] for r in seats) - 4
+        x1 = max(r[0] + r[2] for r in seats); y1 = max(r[1] + r[3] for r in seats)
+        rects.append((x0, y0, x1 - x0, y1 - y0, 'solid'))
+
 # clip to map
 rects = [(max(0, x), max(0, y), min(RW, x + w) - max(0, x), min(RH, y + h) - max(0, y), k)
          for x, y, w, h, k in rects if min(RW, x + w) > max(0, x) and min(RH, y + h) > max(0, y)]
@@ -365,7 +387,7 @@ SPAWNS = [  # name, sprite, foot x, foot y (native px), dialog key, wander radiu
     ('player', 'adam', 64, 237, None, 0),
     # NPCs wear the Greek god skins from tools/greek_skins.py (originals: amelia, bob, alex, alex_alt, amelia_alt)
     ('Mira', 'aphrodite', 152, 53, 'mira', 18),
-    ('Old Tobin', 'zeus', 440, 172, 'tobin', 20),
+    ('Old Tobin', 'zeus', 410, 168, 'tobin', 10),  # beside the campfire (not in front of it, where he hid the fire)
     ('Pip', 'hermes', 372, 64, 'pip', 24),
     ('Kai', 'heracles', 345, 255, 'kai', 30),
     ('Wren', 'hades', 590, 290, 'wren', 24),
@@ -387,15 +409,33 @@ for i, (dx, dy) in enumerate(sorted(doors)):
                            rotation=0, visible=True, properties=[dict(name='house', type='string', value=f'house_{i}'), dict(name='target', type='string', value=DOOR_TARGETS.get(f'house_{i}', ''))]))
 # the ship of Odysseus (tools/make_ship.py) at anchor off the beach. Homeric ships were beached or anchored at the
 # shore, and the open water south of the beach is the only stretch wide enough for a galley seen side-on.
-# (x, y) = waterline centre; talkRect = the strip of shore you can speak to it from.
-spawn_objs.append(dict(id=next_id(), name='odysseus_ship', type='ship', x=406.0, y=322.0, point=True, width=0, height=0,
+# (x, y) = waterline centre, moored right at the beach's edge so it's easy to board and sail off; talkRect = the
+# strip of beach you board from; arrive = where you land coming home (beside the stern, not under the sail).
+spawn_objs.append(dict(id=next_id(), name='odysseus_ship', type='ship', x=406.0, y=292.0, point=True, width=0, height=0,
                        rotation=0, visible=True,
                        properties=[dict(name='dialog', type='string', value='ship'),
-                                   dict(name='talkRect', type='string', value='344,258,124,40'),
+                                   dict(name='talkRect', type='string', value='326,262,160,30'),
                                    # the ship is the dragon raid entry: sails to `target` once `requires` is unlocked
                                    dict(name='target', type='string', value='lair'),
                                    dict(name='requires', type='string', value='achilles'),
-                                   dict(name='arrive', type='string', value='406,268')]))
+                                   dict(name='arrive', type='string', value='330,272')]))
+# the wooden horse statue on the beach (tools/make_horse_statue.py). (x, y) = bottom centre of its plinth.
+spawn_objs.append(dict(id=next_id(), name='horse_statue', type='statue', x=330.0, y=244.0, point=True, width=0, height=0,
+                       rotation=0, visible=True,
+                       properties=[dict(name='sprite', type='string', value='horse_statue'),
+                                   dict(name='dialog', type='string', value='horse_statue'),
+                                   dict(name='footW', type='int', value=40), dict(name='footH', type='int', value=11)]))
+# Circe, the witch of Aeaea (tools/make_witch_statue.py): a player-sized stone statue on the islet in the bay, wrapped
+# in a black aura. Sail up to it (or land on the islet) and press E to enter her grotto (`target`).
+# arrive = where you stand when you come back on foot (by ship you're put back at the helm).
+spawn_objs.append(dict(id=next_id(), name='circe_statue', type='statue', x=318.0, y=338.0, point=True, width=0, height=0,
+                       rotation=0, visible=True,
+                       properties=[dict(name='sprite', type='string', value='witch_statue'),
+                                   dict(name='dialog', type='string', value='circe_statue'),
+                                   dict(name='aura', type='bool', value=True),
+                                   dict(name='target', type='string', value='circe'),
+                                   dict(name='arrive', type='string', value='298,340'),
+                                   dict(name='footW', type='int', value=12), dict(name='footH', type='int', value=5)]))
 sign_i = 0
 for g, members in groups.items():
     if any(m['sheet'] == 'village' and m['id'] in SIGNS for m in members):
