@@ -100,9 +100,11 @@ export interface PlayerStats {
   maxHp: number;
   atk: number;
   potions: number;
+  /** coins: from treasure (Circe's lure chest); Kalos's shop will spend them */
+  gold?: number;
 }
 
-export const START_STATS: PlayerStats = { level: 1, xp: 0, hp: 40, maxHp: 40, atk: 7, potions: 3 };
+export const START_STATS: PlayerStats = { level: 1, xp: 0, hp: 40, maxHp: 40, atk: 7, potions: 3, gold: 0 };
 export const XP_PER_LEVEL = 20;
 export const POTION_HEAL = 20;
 

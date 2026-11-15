@@ -33,6 +33,22 @@ interface Interactable {
   target?: string; requires?: string;
 }
 /** A door (village houses) or exit (cave ladder): walking up into it moves to `target`. */
+/**
+ * A statue that leads into a dungeon. `chest`: the lure still standing there, until it is used.
+ * `style`: how the lure wakes the statue - 'rise' (Circe: the chest is bait, the statue rises from the ground) or
+ * 'pour' (Polyphemus: the statue is already there; you pour the amphora of wine into its mouth).
+ * `aura`: the aura colour once awake (AURAS), or null for none.
+ */
+interface StatueSpot {
+  it: Interactable; x: number; y: number; arrive: Phaser.Math.Vector2;
+  sprite: Phaser.GameObjects.Sprite; aura: AuraStyle | null; chest: Phaser.GameObjects.Sprite | null; style: 'rise' | 'pour';
+}
+/** Aura palettes: the glow hugging the statue, the pool at its feet, and the two wisp textures rising from it. */
+const AURAS = {
+  black: { glow: '#07020c', shadow: '#000000', pool: 0x000000, wisps: ['aura_wisp_black', 'aura_wisp_violet'] },
+  wine: { glow: '#5c0820', shadow: '#2a0010', pool: 0x3a0418, wisps: ['aura_wisp_wine', 'aura_wisp_purple'] },
+} as const;
+type AuraStyle = keyof typeof AURAS;
 interface Portal { id: string; kind: 'door' | 'exit'; target: string; rect: Phaser.Geom.Rectangle; tile: Phaser.Math.Vector2; busy: boolean }
 
 export interface MapSceneData {
@@ -70,9 +86,11 @@ export class MapScene extends Phaser.Scene {
   private sailing = false;
   private edgeToastAt = 0;
   /** statues that lead somewhere (Circe's): where they stand and where you reappear on foot */
-  private statues: { it: Interactable; x: number; y: number; arrive: Phaser.Math.Vector2 }[] = [];
+  private statues: StatueSpot[] = [];
   /** statues with only a plaque to read (no dungeon): readable on foot, or from the ship's deck */
   private readableStatues: { it: Interactable; x: number; y: number }[] = [];
+  /** a short scripted sequence (Circe's statue rising) is playing: no input */
+  private cutscene = false;
   /** coming back from a statue's dungeon by ship: start at the helm */
   private boardOnStart = false;
   private inBattle = false;
@@ -101,6 +119,7 @@ export class MapScene extends Phaser.Scene {
     this.statues = [];
     this.readableStatues = [];
     this.boardOnStart = false;
+    this.cutscene = false;
     this.vignette = null;
     this.inBattle = false;
     this.safeUntil = 0;
@@ -239,8 +258,23 @@ export class MapScene extends Phaser.Scene {
         const fw = prop(s, 'footW', 28), fh = prop(s, 'footH', 8);
         const key = prop(s, 'sprite', 'horse_statue');
         const statue = this.add.sprite(s.x, s.y, key).setOrigin(0.5, 1).setDepth(s.y - fh / 2);
-        if (this.anims.exists(`${key}-idle`)) statue.play(`${key}-idle`);
-        if (prop(s, 'aura', false)) this.addAura(statue);
+        // `lure`: a sprite (the treasure chest, the amphora) stands at `lureAt` (default: on the statue's spot) until
+        // used; `awaken` says what using it does: 'rise' (default, the statue rises: awaken()) or 'pour' (pourWine())
+        const lure = prop(s, 'lure', '');
+        const style = prop<string>(s, 'awaken', 'rise') === 'pour' ? 'pour' : 'rise';
+        const asleep = !!lure && !((this.registry.get('awakened') as string[] | undefined) ?? []).includes(s.name);
+        const la = prop(s, 'lureAt', '').split(',').map(Number);
+        const [lx, ly] = la.length === 2 ? la : [s.x, s.y];
+        const chest = asleep ? this.add.sprite(lx, ly, lure, 0).setOrigin(0.5, 1).setDepth(ly - 2) : null;
+        // `aura`: true = black smoke, or the name of an AURAS palette ('wine')
+        const auraProp = prop<boolean | string>(s, 'aura', false);
+        const aura: AuraStyle | null = auraProp === true ? 'black' : typeof auraProp === 'string' && auraProp in AURAS ? auraProp as AuraStyle : null;
+        if (asleep) {
+          if (style === 'rise') statue.setVisible(false);   // a 'pour' statue is already there, dormant (frame 0)
+        } else {
+          if (this.anims.exists(`${key}-idle`)) statue.play(`${key}-idle`);
+          if (aura) this.addAura(statue, false, aura);
+        }
         this.walls.add(this.add.zone(s.x, s.y - 1 - fh / 2, fw, fh));
         const dialog = prop(s, 'dialog', '');
         const target = prop(s, 'target', '');
@@ -249,7 +283,7 @@ export class MapScene extends Phaser.Scene {
           const it: Interactable = { kind: 'statue', rect, dialog, id: s.name, target };
           this.interactables.push(it);
           const a = prop(s, 'arrive', '').split(',').map(Number);
-          this.statues.push({ it, x: s.x, y: s.y, arrive: new Phaser.Math.Vector2(a.length === 2 ? a[0] : s.x, a.length === 2 ? a[1] : s.y + 10) });
+          this.statues.push({ it, x: s.x, y: s.y, arrive: new Phaser.Math.Vector2(a.length === 2 ? a[0] : s.x, a.length === 2 ? a[1] : s.y + 10), sprite: statue, aura, chest, style });
         } else if (dialog) {
           const it: Interactable = { kind: 'sign', rect, dialog, id: s.name };
           this.interactables.push(it);
@@ -378,7 +412,7 @@ export class MapScene extends Phaser.Scene {
   }
 
   private interact() {
-    if (this.leaving) return;
+    if (this.leaving || this.cutscene) return;
     if (this.dialog) return this.advanceDialog();
     if (this.sailing) {
       const st = this.statueInReach();
@@ -465,8 +499,10 @@ export class MapScene extends Phaser.Scene {
       Phaser.Math.Clamp(st.x, h.x, h.right), Phaser.Math.Clamp(st.y - 8, h.y, h.bottom)) <= 30)?.it ?? null;
   }
 
-  /** Read the statue's lines; closing them takes you into its dungeon. */
+  /** Read the statue's lines; closing them takes you into its dungeon. While the lure stands there, open it instead. */
   private openStatue(it: Interactable, byShip: boolean) {
+    const spot = this.statues.find((st) => st.it === it);
+    if (spot?.chest) return spot.style === 'pour' ? this.pourWine(spot) : this.awaken(spot);
     this.dialog = { entry: dialogFor(it.dialog), line: 0, target: it, onClose: () => this.enterStatue(it, byShip) };
     this.player.frozen = true;
     this.renderDialog();
@@ -486,38 +522,223 @@ export class MapScene extends Phaser.Scene {
   }
 
   /**
+   * The chest was bait. About 3 seconds:
+   *   1. the lid flies open and gold coins fountain out (+50 gold)
+   *   2. the chest rattles while black smoke spirals in from all around
+   *   3. it collapses into a puff of black smoke: violet flash, screen shake, the spilled coins blacken and vanish
+   *   4. the statue grinds up out of the ground, top first, kicking up dust, with a low rumble
+   *   5. its eyes flare, the black aura swells in, and Circe speaks
+   */
+  private awaken(st: StatueSpot) {
+    const chest = st.chest!;
+    st.chest = null;
+    this.cutscene = true;
+    this.player.frozen = true;
+    this.registry.set('awakened', [...((this.registry.get('awakened') as string[] | undefined) ?? []), st.it.id]);
+    const stats = this.stats;
+    stats.gold = (stats.gold ?? 0) + 50;
+    this.registry.set('stats', stats);
+    updateHud(stats);
+    this.ensureFxTextures();
+    const { x, y } = st;
+    const depth = chest.depth;
+    const at = (ms: number, fn: () => void) => this.time.delayedCall(ms, fn);
+
+    // 1. the bait
+    chest.setFrame(1);
+    toast('+50 gold!', 1800);
+    const coins: Phaser.GameObjects.Image[] = [];
+    for (let i = 0; i < 16; i++) {
+      const c = this.add.image(x + Phaser.Math.Between(-3, 3), y - 9, 'fx_coin').setDepth(depth + 1);
+      coins.push(c);
+      const tx = x + Phaser.Math.Between(-24, 24), peak = y - Phaser.Math.Between(18, 34), land = y + Phaser.Math.Between(-4, 3);
+      this.tweens.add({ targets: c, x: tx, duration: 650, delay: i * 18 });
+      this.tweens.add({ targets: c, y: peak, duration: 280, delay: i * 18, ease: 'Quad.out',
+        onComplete: () => this.tweens.add({ targets: c, y: land, duration: 370, ease: 'Bounce.out' }) });
+    }
+    // 2. the trap: rattle + black smoke spiralling in
+    at(650, () => {
+      this.tweens.add({ targets: chest, x: x + 1, duration: 45, yoyo: true, repeat: 8 });
+      for (let i = 0; i < 26; i++) {
+        const a = (i / 26) * Math.PI * 2, r = Phaser.Math.Between(34, 48);
+        const w = this.add.image(x + Math.cos(a) * r, y - 8 + Math.sin(a) * r * 0.6, i % 3 ? 'aura_wisp_black' : 'aura_wisp_violet')
+          .setDepth(depth + 2).setScale(2).setAlpha(0);
+        this.tweens.add({ targets: w, x: x + Math.cos(a + 1.4) * 3, y: y - 8 + Math.sin(a + 1.4) * 2, alpha: { from: 0.95, to: 0.6 },
+          scale: 1, duration: 650, delay: i * 12, ease: 'Sine.in', onComplete: () => w.destroy() });
+      }
+    });
+    // 3. the curse
+    at(1400, () => {
+      this.tweens.add({ targets: chest, alpha: 0, scaleY: 0.2, duration: 140, onComplete: () => chest.destroy() });
+      for (let i = 0; i < 9; i++) {
+        const p = this.add.circle(x + Phaser.Math.Between(-6, 6), y - Phaser.Math.Between(4, 14), Phaser.Math.Between(3, 6), i % 3 ? 0x000000 : 0x2a0f3d, 0.9)
+          .setDepth(depth + 3);
+        this.tweens.add({ targets: p, scale: 2.6, alpha: 0, y: p.y - Phaser.Math.Between(6, 16), duration: Phaser.Math.Between(500, 800), onComplete: () => p.destroy() });
+      }
+      this.cameras.main.flash(260, 90, 30, 140);
+      this.cameras.main.shake(220, 0.006);
+      for (const c of coins) {
+        c.setTexture('fx_coin_dark');
+        this.tweens.add({ targets: c, alpha: 0, duration: 500, delay: Phaser.Math.Between(0, 250), onComplete: () => c.destroy() });
+      }
+    });
+    // 4. she rises: reveal the statue top-first while sliding it up out of the ground
+    at(1700, () => {
+      const s = st.sprite, fh = s.height;
+      s.setVisible(true).setFrame(0).setCrop(0, 0, s.width, 0).setY(y + fh);
+      this.cameras.main.shake(1000, 0.002);
+      const dust = this.time.addEvent({ delay: 70, repeat: 13, callback: () => {
+        const d = this.add.rectangle(x + Phaser.Math.Between(-8, 8), y - 1, 2, 2, Phaser.Math.RND.pick([0xb89a6a, 0x8c7354, 0xd8c49a])).setDepth(depth + 1);
+        this.tweens.add({ targets: d, x: d.x + Phaser.Math.Between(-10, 10), y: d.y - Phaser.Math.Between(3, 8), alpha: 0, duration: 450, onComplete: () => d.destroy() });
+      } });
+      this.tweens.addCounter({ from: 0, to: fh, duration: 1100, ease: 'Sine.out',
+        onUpdate: (tw) => { const h = Math.round(tw.getValue() ?? 0); s.setCrop(0, 0, s.width, h).setY(y + fh - h); },
+        onComplete: () => { s.setCrop().setY(y); dust.remove(); } });
+    });
+    // 5. eyes flare, aura swells in, Circe speaks
+    at(2900, () => {
+      const s = st.sprite;
+      s.setFrame(1);
+      if (this.anims.exists(`${s.texture.key}-idle`)) this.time.delayedCall(250, () => s.play(`${s.texture.key}-idle`));
+      if (st.aura) this.addAura(s, true, st.aura);
+      this.cameras.main.flash(150, 60, 10, 90);
+    });
+    at(3500, () => {
+      this.cutscene = false;
+      this.dialog = { entry: dialogFor('circe_awaken'), line: 0, target: st.it };
+      this.renderDialog();
+    });
+  }
+
+  /**
+   * Odysseus' trick on Polyphemus: the amphora of Maron's wine poured into the stone mouth. About 3 seconds:
+   *   1. the amphora tips toward the head and a stream of wine arcs into its mouth
+   *   2. the empty jar topples and fades; the head shudders, the ground rumbles, a wine-red flash
+   *   3. the jaw grinds open (frame 1), the eye blazes, red and violet sparks burst from the mouth
+   *   4. the eye settles into its pulse, the wine-red aura swells in, and the Cyclops speaks
+   * Uses the head's frames: 0 dormant, 1-2 awake (jaw open, eye blazing / glowing), idle anim `<key>-idle` = 1,2.
+   */
+  private pourWine(st: StatueSpot) {
+    const jar = st.chest!;
+    st.chest = null;
+    this.cutscene = true;
+    this.player.frozen = true;
+    this.registry.set('awakened', [...((this.registry.get('awakened') as string[] | undefined) ?? []), st.it.id]);
+    this.ensureFxTextures();
+    const s = st.sprite;
+    const mouth = { x: st.x, y: st.y - 13 };              // the mouth on the 32x34 head, from its bottom centre
+    const dir = jar.x > st.x ? -1 : 1;                    // tip toward the head
+    const lip = () => ({ x: jar.x + dir * 6, y: jar.y - 15 });
+    const at = (ms: number, fn: () => void) => this.time.delayedCall(ms, fn);
+
+    // 1. tip and pour
+    this.tweens.add({ targets: jar, angle: dir * 75, y: jar.y - 3, duration: 420, ease: 'Sine.inOut' });
+    at(420, () => {
+      for (let i = 0; i < 22; i++) {
+        at(i * 35, () => {
+          const p = lip();
+          const d = this.add.image(p.x, p.y, i % 4 ? 'fx_wine' : 'fx_wine_hi').setDepth(s.depth + 1);
+          const peak = Math.min(p.y, mouth.y) - Phaser.Math.Between(6, 10);
+          this.tweens.add({ targets: d, x: mouth.x + Phaser.Math.Between(-2, 2), duration: 380, ease: 'Linear' });
+          this.tweens.add({ targets: d, y: peak, duration: 170, ease: 'Quad.out',
+            onComplete: () => this.tweens.add({ targets: d, y: mouth.y + Phaser.Math.Between(-1, 1), duration: 210, ease: 'Quad.in', onComplete: () => d.destroy() }) });
+        });
+      }
+    });
+    // 2. the jar is empty: it topples and fades; the head shudders
+    at(1350, () => {
+      this.tweens.add({ targets: jar, angle: dir * 100, alpha: 0, y: jar.y + 2, duration: 450, onComplete: () => jar.destroy() });
+      this.tweens.add({ targets: s, x: st.x + 1, duration: 50, yoyo: true, repeat: 7, onComplete: () => s.setX(st.x) });
+      this.cameras.main.shake(700, 0.004);
+      this.cameras.main.flash(240, 120, 10, 40);
+    });
+    // 3. the jaw opens, the eye blazes
+    at(1900, () => {
+      s.setFrame(1);
+      for (let i = 0; i < 14; i++) {
+        const a = Phaser.Math.FloatBetween(Math.PI * 1.1, Math.PI * 1.9);   // upwards fan from the mouth
+        const p = this.add.image(mouth.x, mouth.y, i % 3 ? 'aura_wisp_wine' : 'aura_wisp_purple').setDepth(s.depth + 2).setScale(1.5);
+        const r = Phaser.Math.Between(10, 22);
+        this.tweens.add({ targets: p, x: mouth.x + Math.cos(a) * r, y: mouth.y + Math.sin(a) * r, alpha: 0, scale: 0.5,
+          duration: Phaser.Math.Between(450, 750), ease: 'Quad.out', onComplete: () => p.destroy() });
+      }
+      this.cameras.main.flash(160, 160, 30, 30);
+    });
+    // 4. it breathes: eye pulse + aura
+    at(2400, () => {
+      if (this.anims.exists(`${s.texture.key}-idle`)) s.play(`${s.texture.key}-idle`);
+      if (st.aura) this.addAura(s, true, st.aura);
+    });
+    at(3000, () => {
+      this.cutscene = false;
+      this.dialog = { entry: dialogFor(`${st.it.id}_awaken`), line: 0, target: st.it };
+      this.renderDialog();
+    });
+  }
+
+  /** Tiny textures for effects, drawn once (no tinting, so WebGL and Canvas look the same). */
+  private ensureFxTextures() {
+    const make = (k: string, w: number, h: number, draw: (ctx: CanvasRenderingContext2D) => void) => {
+      if (this.textures.exists(k)) return;
+      const t = this.textures.createCanvas(k, w, h)!;
+      draw(t.getContext()); t.refresh();
+    };
+    const coin = (body: string, hi: string, lo: string) => (ctx: CanvasRenderingContext2D) => {
+      ctx.fillStyle = body; ctx.fillRect(0, 1, 3, 1); ctx.fillRect(1, 0, 1, 3);
+      ctx.fillStyle = hi; ctx.fillRect(1, 0, 1, 1); ctx.fillStyle = lo; ctx.fillRect(1, 2, 1, 1);
+    };
+    make('fx_coin', 3, 3, coin('#f0c040', '#fff2a0', '#c08a20'));
+    make('fx_coin_dark', 3, 3, coin('#2a0f3d', '#5a2a7a', '#000000'));
+    make('aura_wisp_black', 2, 2, (ctx) => { ctx.fillStyle = '#000000'; ctx.fillRect(0, 0, 2, 2); });
+    make('aura_wisp_violet', 2, 2, (ctx) => { ctx.fillStyle = '#2a0f3d'; ctx.fillRect(0, 0, 2, 2); });
+    make('aura_wisp_wine', 2, 2, (ctx) => { ctx.fillStyle = '#9a1236'; ctx.fillRect(0, 0, 2, 2); });
+    make('aura_wisp_purple', 2, 2, (ctx) => { ctx.fillStyle = '#6a2a9a'; ctx.fillRect(0, 0, 2, 2); });
+    make('fx_wine', 2, 2, (ctx) => { ctx.fillStyle = '#7a0c2c'; ctx.fillRect(0, 0, 2, 2); });
+    make('fx_wine_hi', 2, 2, (ctx) => { ctx.fillStyle = '#c0304e'; ctx.fillRect(0, 0, 2, 2); });
+  }
+
+  /**
    * Black aura: a soft black glow hugging the statue's silhouette, a dark pool at its feet and black-violet wisps
    * rising around it. Textures are made here (no tinting), so it looks the same in WebGL and Canvas.
    */
-  private addAura(statue: Phaser.GameObjects.Sprite) {
+  private addAura(statue: Phaser.GameObjects.Sprite, fadeIn = false, style: AuraStyle = 'black') {
+    const pal = AURAS[style];
     const key = statue.texture.key;
-    const glowKey = `${key}__aura`;
+    const glowKey = `${key}__aura_${style}`;
     const pad = 10;
     const f = this.textures.getFrame(key, 0);
     if (!this.textures.exists(glowKey)) {
       const c = this.textures.createCanvas(glowKey, f.width + pad * 2, f.height + pad * 2)!;
       const ctx = c.getContext();
       const src = f.source.image as CanvasImageSource;
-      ctx.shadowColor = '#000'; ctx.shadowBlur = 6;
+      ctx.shadowColor = pal.shadow; ctx.shadowBlur = 6;
       for (let i = 0; i < 4; i++) ctx.drawImage(src, f.cutX, f.cutY, f.width, f.height, pad, pad, f.width, f.height);
       ctx.globalCompositeOperation = 'source-in';
-      ctx.fillStyle = '#07020c';
+      ctx.fillStyle = pal.glow;
       ctx.fillRect(0, 0, c.width, c.height);
       c.refresh();
     }
-    for (const [k, color] of [['aura_wisp_black', '#000000'], ['aura_wisp_violet', '#2a0f3d']] as const) {
-      if (this.textures.exists(k)) continue;
-      const t = this.textures.createCanvas(k, 2, 2)!;
-      t.getContext().fillStyle = color; t.getContext().fillRect(0, 0, 2, 2); t.refresh();
+    this.ensureFxTextures();
+    const { depth } = statue;
+    const x = Math.round(statue.x), y = statue.y;
+    const pool = this.add.ellipse(x, y - 1, Math.max(26, f.width + 4), 7, pal.pool, fadeIn ? 0 : 0.45).setDepth(-499);
+    const glow = this.add.image(x, y + pad, glowKey).setOrigin(0.5, 1).setDepth(depth - 0.01).setAlpha(fadeIn ? 0 : 0.75);
+    const breathe = () => {
+      this.tweens.add({ targets: glow, alpha: 0.95, scaleX: 1.12, scaleY: 1.06, duration: 1300, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+      this.tweens.add({ targets: pool, scaleX: 1.2, alpha: 0.6, duration: 1300, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    };
+    if (fadeIn) {
+      // swell in: the glow overshoots, then settles into its breathing
+      this.tweens.add({ targets: glow, alpha: 0.75, scaleX: { from: 1.6, to: 1 }, scaleY: { from: 1.3, to: 1 }, duration: 600, ease: 'Back.out' });
+      this.tweens.add({ targets: pool, alpha: 0.45, scaleX: { from: 2, to: 1 }, duration: 600, ease: 'Back.out', onComplete: breathe });
+    } else {
+      breathe();
     }
-    const { x, y, depth } = statue;
-    const pool = this.add.ellipse(x, y - 1, 26, 7, 0x000000, 0.45).setDepth(-499);
-    const glow = this.add.image(x, y + pad, glowKey).setOrigin(0.5, 1).setDepth(depth - 0.01).setAlpha(0.75);
-    this.tweens.add({ targets: glow, alpha: 0.95, scaleX: 1.12, scaleY: 1.06, duration: 1300, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    this.tweens.add({ targets: pool, scaleX: 1.2, alpha: 0.6, duration: 1300, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
-    for (const [k, freq] of [['aura_wisp_black', 90], ['aura_wisp_violet', 160]] as const) {
+    // wisps rise from around the whole statue (sized from its frame, so a wide head gets a wide plume)
+    const hw = Math.max(9, f.width / 2 - 3), top = Math.max(28, f.height - 6);
+    for (const [k, freq] of [[pal.wisps[0], 90], [pal.wisps[1], 160]] as const) {
       this.add.particles(x, y, k, {
-        x: { min: -9, max: 9 }, y: { min: -28, max: -2 },
+        x: { min: -hw, max: hw }, y: { min: -top, max: -2 },
         speedX: { min: -4, max: 4 }, speedY: { min: -16, max: -6 },
         lifespan: { min: 900, max: 1700 }, alpha: { start: 0.9, end: 0 }, scale: { start: 1.4, end: 0.4 },
         frequency: freq, quantity: 1,
@@ -669,7 +890,7 @@ export class MapScene extends Phaser.Scene {
     };
     const idle = { up: false, down: false, left: false, right: false };
     const dt = Math.min(delta, 50) / 1000;
-    if (this.sailing && this.ship && !this.dialog && !this.leaving) {
+    if (this.sailing && this.ship && !this.dialog && !this.leaving && !this.cutscene) {
       if (this.ship.step(dt, input)) this.openSea();
       this.player.update(idle);
     } else {
@@ -677,6 +898,13 @@ export class MapScene extends Phaser.Scene {
       this.player.update(input);
     }
     this.ship?.update(time);
+    if (this.ship) {
+      // the sail is tall: when the ship sits in front of a statue (or its chest), fade it so you can see what happens
+      const ship = this.ship;
+      const sb = ship.sprite.getBounds();
+      const hides = this.statues.some((st) => st.y < ship.pos.y && Phaser.Geom.Intersects.RectangleToRectangle(sb, (st.chest ?? st.sprite).getBounds()));
+      ship.sprite.alpha += ((hides ? 0.3 : 1) - ship.sprite.alpha) * 0.15;
+    }
     for (const n of this.npcs) n.update(time, delta);
     for (const e of this.enemies) e.update(time, this.player);
     if (!this.sailing) this.checkPortals();

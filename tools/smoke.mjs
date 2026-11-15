@@ -211,6 +211,20 @@ await tap('KeyE'); // board
 await page.evaluate(() => window.game.scene.getScene('village').ship.pos.set(318, 350)); // just south of the islet
 await new Promise((r) => setTimeout(r, 300));
 await page.screenshot({ path: 'cache/shot_statue.png' });
+// first visit: a treasure chest stands there. E opens it (+50 gold) and Circe's statue rises in its place
+const chestBefore = await page.evaluate(() => { const s = window.game.scene.getScene('village'); const st = s.statues[0];
+  return { chest: !!st.chest, statue: st.sprite.visible }; });
+await tap('KeyE');
+await new Promise((r) => setTimeout(r, 1900));
+await page.screenshot({ path: 'cache/shot_awaken_mid.png' });
+await new Promise((r) => setTimeout(r, 1900));
+const risen = await page.evaluate(() => { const s = window.game.scene.getScene('village'); const st = s.statues[0];
+  return { chest: !!st.chest, statue: st.sprite.visible, cropped: st.sprite.isCropped, y: st.sprite.y, dialog: document.querySelector('#dialog .name').textContent,
+    hud: document.getElementById('hud').innerText, awakened: window.game.registry.get('awakened') }; });
+console.log('chest opens, statue rises:', JSON.stringify(chestBefore), JSON.stringify(risen),
+  chestBefore.chest && !chestBefore.statue && !risen.chest && risen.statue && !risen.cropped && risen.y === 332 && risen.dialog === 'Circe' && risen.hud.includes('Gold 50') ? 'OK' : 'FAIL');
+await page.screenshot({ path: 'cache/shot_awaken_end.png' });
+await tap('KeyE'); await tap('KeyE'); // close Circe's lines
 await tap('KeyE');
 const statueDlg = await page.evaluate(() => document.querySelector('#dialog .name').textContent);
 console.log('statue from the ship:', statueDlg, statueDlg.includes('Circe') ? 'OK' : 'FAIL');

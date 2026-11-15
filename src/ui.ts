@@ -48,7 +48,7 @@ export function toast(msg: string, ms = 1800) {
 export function updateHud(s: PlayerStats) {
   const el = document.getElementById('hud')!;
   el.innerHTML = `<span>Lv ${s.level}</span><span>HP ${s.hp}/${s.maxHp}</span>` +
-    `<span class="hpbar"><i style="width:${Math.round((100 * s.hp) / s.maxHp)}%"></i></span><span>Ambrosia ${s.potions}</span>`;
+    `<span class="hpbar"><i style="width:${Math.round((100 * s.hp) / s.maxHp)}%"></i></span><span>Ambrosia ${s.potions}</span><span>Gold ${s.gold ?? 0}</span>`;
 }
 
 // ---------------------------------------------------------------- battle panel

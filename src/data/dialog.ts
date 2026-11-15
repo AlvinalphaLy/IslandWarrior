@@ -16,7 +16,9 @@ export const DIALOG: Record<string, DialogEntry> = {
   sign_3: { name: 'Sign', lines: ['Fishing spot. Patience required.'] },
   sign_4: { name: 'Sign', lines: ['Welcome to the island!'] },
   sign_5: { name: 'Sign', lines: ['Garden. Please keep off the flowers.'] },
-  cyclops_head: { name: 'Head of Polyphemus', lines: ['A giant stone head sinks into the islet, its one great eye fixed on the bay.', 'Words are scratched into the brow: "Nobody did this to me."'] },
+  // the head of Polyphemus: pour the amphora of wine into its mouth (pourWine), then E at the head enters his cave
+  cyclops_head: { name: 'Head of Polyphemus', lines: ['Words are scratched into the stone brow: "Nobody did this to me."', 'The open jaw breathes wine and the smell of sheep. You climb down into the dark...'] },
+  cyclops_head_awaken: { name: 'Polyphemus', lines: ['"Wine... strong, sweet wine! More, little stranger. What is your name?"', '"Nobody," you answer. The stone jaw grinds open onto a cave below. Press E at the head to enter.'] },
   horse_statue: { name: 'Wooden Horse', lines: ['A great horse carved from ship timber, rearing toward the sea.', 'The plaque reads: "Beware of Greeks bearing gifts."'] },
 
   // the ship of Odysseus: board it from the shore and sail it; the south edge of the map is the voyage to the lair
@@ -28,6 +30,7 @@ export const DIALOG: Record<string, DialogEntry> = {
 
   // Circe's statue on the islet: closing these lines takes you into her grotto (tools/build_dungeon.py circe)
   circe_statue: { name: 'Statue of Circe', lines: ['A stone witch stands in a cloud of black smoke. Her eyes glow violet.', 'The smoke curls around you and pulls you down into the dark...'] },
+  circe_awaken: { name: 'Circe', lines: ['Gold for the greedy, smoke for the fool...', 'A stone witch rises where the treasure stood. Her eyes burn violet. Press E at her statue to enter her grotto.'] },
   chest_circe: { name: 'Chest', lines: ['A sprig of moly, the herb Hermes gave Odysseus against Circe\'s magic.'] },
 
   // ---- cave (under every house) ----

@@ -448,15 +448,25 @@ spawn_objs.append(dict(id=next_id(), name='circe_statue', type='statue', x=424.0
                        properties=[dict(name='sprite', type='string', value='witch_statue'),
                                    dict(name='dialog', type='string', value='circe_statue'),
                                    dict(name='aura', type='bool', value=True),
+                                   # a treasure chest stands here first; opening it (E, from the ship or on foot) raises the statue
+                                   dict(name='lure', type='string', value='treasure_chest'),
                                    dict(name='target', type='string', value='circe'),
                                    dict(name='arrive', type='string', value='424,374'),
                                    dict(name='footW', type='int', value=12), dict(name='footH', type='int', value=5)]))
 # the stone head of Polyphemus (tools/make_cyclops_head.py), half sunk into the islet in the bay, gazing at the
-# bay. Read it from the ship's deck. (x, y) = bottom centre of its rubble mound.
+# bay. Land the ship on the islet to read it. (x, y) = bottom centre of its rubble mound.
 spawn_objs.append(dict(id=next_id(), name='cyclops_head', type='statue', x=304.0, y=342.0, point=True, width=0, height=0,
                        rotation=0, visible=True,
                        properties=[dict(name='sprite', type='string', value='cyclops_head'),
                                    dict(name='dialog', type='string', value='cyclops_head'),
+                                   # Maron's wine (tools/make_amphora.py) stands beside it: pour it into the mouth
+                                   # (E, on foot or from the ship) and the jaw opens onto Polyphemus' cave
+                                   dict(name='lure', type='string', value='amphora'),
+                                   dict(name='lureAt', type='string', value='326,340'),
+                                   dict(name='awaken', type='string', value='pour'),
+                                   dict(name='aura', type='string', value='wine'),
+                                   dict(name='target', type='string', value='dungeon'),
+                                   dict(name='arrive', type='string', value='282,340'),
                                    dict(name='footW', type='int', value=26), dict(name='footH', type='int', value=9)]))
 sign_i = 0
 for g, members in groups.items():

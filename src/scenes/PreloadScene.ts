@@ -30,8 +30,13 @@ export class PreloadScene extends Phaser.Scene {
     // wooden horse statue on the beach (tools/make_horse_statue.py)
     this.load.image('horse_statue', 'assets/props/horse_statue.png');
     // stone head of Polyphemus on the small south-east islet (tools/make_cyclops_head.py)
-    this.load.image('cyclops_head', 'assets/props/cyclops_head.png');
+    // frames: 0 dormant, 1-2 awake (jaw open, eye blazing / glowing)
+    this.load.spritesheet('cyclops_head', 'assets/props/cyclops_head.png', { frameWidth: 32, frameHeight: 34 });
+    // the amphora of Maron's wine beside it: pour it into the mouth to wake the head (tools/make_amphora.py)
+    this.load.spritesheet('amphora', 'assets/props/amphora.png', { frameWidth: 14, frameHeight: 19 });
     // Circe's statue on the islet (tools/make_witch_statue.py): 2 frames of 16x32, glowing eyes
+    // the treasure chest that lures you to Circe's islet (tools/make_treasure_chest.py): closed / open, 24x20
+    this.load.spritesheet('treasure_chest', 'assets/props/treasure_chest.png', { frameWidth: 24, frameHeight: 20 });
     this.load.spritesheet('witch_statue', 'assets/props/witch_statue.png', { frameWidth: 16, frameHeight: 32 });
   }
 
@@ -39,6 +44,7 @@ export class PreloadScene extends Phaser.Scene {
     this.anims.create({ key: 'campfire', frames: this.anims.generateFrameNumbers('campfire_ss', {}), frameRate: 9, repeat: -1 });
     this.anims.create({ key: 'door-open', frames: this.anims.generateFrameNumbers('door_ss', { start: 0, end: 3 }), frameRate: 12 });
     this.anims.create({ key: 'witch_statue-idle', frames: this.anims.generateFrameNumbers('witch_statue', { start: 0, end: 1 }), frameRate: 1.5, repeat: -1 });
+    this.anims.create({ key: 'cyclops_head-idle', frames: this.anims.generateFrameNumbers('cyclops_head', { frames: [1, 2] }), frameRate: 1.2, repeat: -1 });
     this.anims.create({ key: 'ship-idle', frames: this.anims.generateFrameNumbers('ship', { start: 0, end: 3 }), frameRate: 4, repeat: -1 });
     // idle loop for every animated Greek enemy (frames 0-1), used on the map and in battle
     for (const k of Object.keys(GREEK_SHEETS)) {

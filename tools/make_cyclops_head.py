@@ -107,7 +107,26 @@ solid = img[..., 3] > 0
 img[ndimage.binary_dilation(solid) & ~solid] = (*OUTLINE, 255)
 img[ndimage.binary_dilation(solid_head) & rub & (np.arange(H)[:, None] < 30)] = (*OUTLINE, 255)
 
-Image.fromarray(img).save(OUT)
+# ---- frames: 0 = dormant (as drawn above), 1/2 = awakened by the wine: jaw gaping open into a dark cave mouth,
+# the eye blazing (1) / glowing (2). The game pulses between 1 and 2.
+def awake(bright):
+    a = img.copy()
+    inside, wine = (24, 8, 16), (106, 14, 36)
+    gape = runs({20: [(10, 15)], 21: [(10, 15)], 22: [(10, 15)], 23: [(11, 15)], 24: [(12, 15)]})
+    a[gape] = (*inside, 255)
+    a[runs({23: [(13, 15)], 24: [(14, 15)]})] = (*wine, 255)              # wine glinting in the throat
+    a[runs({20: [(11, 11)], 21: [(11, 11)], 22: [(11, 11)]})] = (*EYE_WHITE, 255)   # upper tusks, longer now
+    a[runs({24: [(13, 13)]})] = (*EYE_WHITE, 255)                         # lower teeth
+    a[runs({25: [(12, 15)]})] = (*OUTLINE, 255)                           # lower lip line
+    hot = [(255, 214, 120), (255, 92, 48)] if bright else [(255, 150, 80), (214, 52, 40)]
+    a[iris] = (*hot[1], 255); a[runs({12: [(14, 15)]})] = (*hot[0], 255)
+    a[pupil] = (*((120, 10, 10) if bright else (60, 8, 8)), 255)
+    for y, x in zip(*np.nonzero(eye_white & ~iris)):
+        a[y, x] = (*((255, 236, 200) if bright else (238, 226, 200)), 255)
+    return a
+
+sheet = np.concatenate([img, awake(True), awake(False)], axis=1)
+Image.fromarray(sheet).save(OUT)
 if len(sys.argv) > 1:
-    Image.fromarray(img).resize((W * 10, H * 10), Image.NEAREST).save(sys.argv[1])
-print('wrote', OUT)
+    Image.fromarray(sheet).resize((sheet.shape[1] * 8, H * 8), Image.NEAREST).save(sys.argv[1])
+print(f'wrote {OUT} (3 frames of {W}x{H})')
